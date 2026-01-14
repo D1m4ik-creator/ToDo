@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Доска задач</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+    <!-- НАВИГАЦИЯ -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-[1400px] mx-auto px-2 md:px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2 md:gap-4">
+                <a href="index.html" class="p-1.5 hover:bg-slate-100 rounded-lg transition text-slate-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </a>
+                <div>
+                    <h1 id="project-name" class="font-bold text-sm md:text-base text-slate-800">Загрузка...</h1>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 md:gap-3">
+                <div id="project-members-list" class="flex -space-x-2"></div>
+                <div class="w-px h-6 bg-slate-200"></div>
+                <button onclick="openCreateTaskModal()"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 md:px-3 py-1.5 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-1">
+                    <span>+</span> <span class="hidden sm:inline">Задача</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="px-2 md:px-4 py-3 max-w-[1200px] mx-auto h-[calc(100vh-64px)] flex flex-col">
+        <div class="flex flex-nowrap gap-3 justify-start items-start flex-1 overflow-x-auto pb-3">
+
+            <!-- КОЛОНКА 1: TODO -->
+            <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
+                 id="container-todo"
+                 ondragover="allowDrop(event)"
+                 ondrop="drop(event, 'todo')"
+                 ondragenter="highlightCol('todo')"
+                 ondragleave="unhighlightCol('todo')"
+                 onmouseenter="showColumnButton('todo')"
+                 onmouseleave="hideColumnButton('todo')">
+                <div class="flex items-center justify-between mb-2 px-2 pt-1">
+                    <h3 class="font-bold text-slate-600 text-xs uppercase">Нужно</h3>
+                    <span id="count-todo" class="bg-slate-300 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                </div>
+                <div id="col-todo" class="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 px-2"></div>
+
+                <div id="inline-form-todo" class="hidden p-2 bg-white rounded-lg shadow-sm border border-indigo-200 mx-2 mb-3 text-sm mt-2">
+                    <input type="text" id="input-todo" class="w-full text-xs font-semibold outline-none mb-1.5 bg-slate-50 px-2 py-1 rounded"
+                           placeholder="Название..." onkeyup="if(event.key==='Enter') quickCreate('todo')">
+                    <button onclick="quickCreate('todo')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">Добавить</button>
+                </div>
+
+                <button id="btn-todo" class="hidden w-full py-2 mx-2 text-xs rounded-lg border-2 border-dashed border-slate-300 text-slate-500 font-semibold hover:bg-slate-200 transition mt-2" onclick="toggleInlineForm('todo')">+ Задача</button>
+            </div>
+
+            <!-- КОЛОНКА 2: IN PROGRESS -->
+            <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
+                 id="container-progress"
+                 ondragover="allowDrop(event)"
+                 ondrop="drop(event, 'progress')"
+                 ondragenter="highlightCol('progress')"
+                 ondragleave="unhighlightCol('progress')"
+                 onmouseenter="showColumnButton('progress')"
+                 onmouseleave="hideColumnButton('progress')">
+                <div class="flex items-center justify-between mb-2 px-2 pt-1">
+                    <h3 class="font-bold text-indigo-700 text-xs uppercase">Работа</h3>
+                    <span id="count-progress" class="bg-indigo-300 text-indigo-800 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                </div>
+                <div id="col-progress" class="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 px-2"></div>
+
+                <div id="inline-form-progress" class="hidden p-2 bg-white rounded-lg shadow-sm border border-indigo-200 mx-2 mb-3 text-sm mt-2">
+                    <input type="text" id="input-progress" class="w-full text-xs font-semibold outline-none mb-1.5 bg-slate-50 px-2 py-1 rounded"
+                           placeholder="Название..." onkeyup="if(event.key==='Enter') quickCreate('progress')">
+                    <button onclick="quickCreate('progress')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">Добавить</button>
+                </div>
+
+                <button id="btn-progress" class="hidden w-full py-2 mx-2 text-xs rounded-lg border-2 border-dashed border-indigo-300 text-indigo-600 font-semibold hover:bg-indigo-200 transition mt-2" onclick="toggleInlineForm('progress')">+ Задача</button>
+            </div>
+
+            <!-- КОЛОНКА 3: REVIEW -->
+            <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
+                 id="container-review"
+                 ondragover="allowDrop(event)"
+                 ondrop="drop(event, 'review')"
+                 ondragenter="highlightCol('review')"
+                 ondragleave="unhighlightCol('review')"
+                 onmouseenter="showColumnButton('review')"
+                 onmouseleave="hideColumnButton('review')">
+                <div class="flex items-center justify-between mb-2 px-2 pt-1">
+                    <h3 class="font-bold text-amber-700 text-xs uppercase">Проверка</h3>
+                    <span id="count-review" class="bg-amber-300 text-amber-800 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                </div>
+                <div id="col-review" class="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 px-2"></div>
+
+                <div id="inline-form-review" class="hidden p-2 bg-white rounded-lg shadow-sm border border-indigo-200 mx-2 mb-3 text-sm mt-2">
+                    <input type="text" id="input-review" class="w-full text-xs font-semibold outline-none mb-1.5 bg-slate-50 px-2 py-1 rounded"
+                           placeholder="Название..." onkeyup="if(event.key==='Enter') quickCreate('review')">
+                    <button onclick="quickCreate('review')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">Добавить</button>
+                </div>
+
+                <button id="btn-review" class="hidden w-full py-2 mx-2 text-xs rounded-lg border-2 border-dashed border-amber-300 text-amber-600 font-semibold hover:bg-amber-200 transition mt-2" onclick="toggleInlineForm('review')">+ Задача</button>
+            </div>
+
+            <!-- КОЛОНКА 4: DONE -->
+            <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
+                 id="container-done"
+                 ondragover="allowDrop(event)"
+                 ondrop="drop(event, 'done')"
+                 ondragenter="highlightCol('done')"
+                 ondragleave="unhighlightCol('done')"
+                 onmouseenter="showColumnButton('done')"
+                 onmouseleave="hideColumnButton('done')">
+                <div class="flex items-center justify-between mb-2 px-2 pt-1">
+                    <h3 class="font-bold text-emerald-700 text-xs uppercase">Готово</h3>
+                    <span id="count-done" class="bg-emerald-300 text-emerald-800 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                </div>
+                <div id="col-done"" class="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-3 px-2"></div>
+
+                <div id="inline-form-done" class="hidden p-2 bg-white rounded-lg shadow-sm border border-indigo-200 mx-2 mb-3 text-sm mt-2">
+                    <input type="text" id="input-done" class="w-full text-xs font-semibold outline-none mb-1.5 bg-slate-50 px-2 py-1 rounded"
+                           placeholder="Название..." onkeyup="if(event.key==='Enter') quickCreate('done')">
+                    <button onclick="quickCreate('done')" class="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition">Добавить</button>
+                </div>
+
+                <button id="btn-done" class="hidden w-full py-2 mx-2 text-xs rounded-lg border-2 border-dashed border-emerald-300 text-emerald-600 font-semibold hover:bg-emerald-200 transition mt-2" onclick="toggleInlineForm('done')">+ Задача</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО -->
+    <div id="task-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-md rounded-xl p-5 shadow-xl" id="task-modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-slate-800" id="modal-title">Новая задача</h2>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+                <input type="hidden" id="edit-task-id" value="">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Заголовок</label>
+                    <input type="text" id="edit-title" placeholder="Название..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Описание</label>
+                    <textarea id="edit-desc" rows="2" placeholder="Подробнее..." class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm resize-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Приоритет</label>
+                        <select id="edit-priority" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                            <option value="low">Низкий</option>
+                            <option value="medium" selected>Средний</option>
+                            <option value="high">Высокий</option>
+                            <option value="urgently">Срочно</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Исполнитель</label>
+                        <select id="edit-assignee" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold">
+                            <option value="">Не назначен</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button onclick="saveTaskUpdate()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg font-semibold text-sm transition">Сохранить</button>
+                    <button onclick="deleteTask()" id="delete-btn" class="px-3 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg font-semibold transition hidden">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2"></div>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        // Функции управления видимостью кнопки "Создать задачу"
+        function showColumnButton(status) {
+            const btn = document.getElementById(`btn-${status}`);
+            const form = document.getElementById(`inline-form-${status}`);
+            if (btn && form.classList.contains('hidden')) {
+                btn.classList.remove('hidden');
+            }
+        }
+
+        function hideColumnButton(status) {
+            const btn = document.getElementById(`btn-${status}`);
+            const form = document.getElementById(`inline-form-${status}`);
+            if (btn && form.classList.contains('hidden')) {
+                btn.classList.add('hidden');
+            }
+        }
+    </script>
+    <script src="js/project.js"></script>
+</body>
+</html>

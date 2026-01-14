@@ -1,0 +1,76 @@
+/* Плавное появление контента */
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+/* Анимация пульсации для активного кода */
+.pulse-indigo {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .7; }
+}
+
+/* Линия прогресса таймера */
+.timer-progress {
+    height: 4px;
+    background: #4f46e5;
+    transition: width 1s linear;
+    border-radius: 2px;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Эффект для кнопок */
+button:active {
+    transform: scale(0.95);
+}
+
+/* Стилизация полей ввода */
+input:focus {
+    border-color: #4f46e5 !important;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    outline: none;
+}
+
+/* Градиентный текст для заголовков */
+.gradient-text {
+    background: linear-gradient(90deg, #4f46e5, #9333ea);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+#id-progress {
+    transition: width 1s linear;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.active-tab {
+    transition: all 0.2s ease-in-out;
+    background-color: white !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    color: #4f46e5 !important;
+}
+
+.tab-btn {
+    cursor: pointer;
+    color: #64748b;
+}
+
+.tab-btn:hover:not(.active-tab) {
+    color: #4f46e5;
+}
+
+/* Анимация появления контента */
+.fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+.border-amber-200 {
+    box-shadow: 0 4px 15px -3px rgba(245, 158, 11, 0.1);
+}
