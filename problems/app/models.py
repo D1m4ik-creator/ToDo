@@ -78,7 +78,7 @@ class Projects(models.Model):
 class Task(models.Model):
 
     class Status(models.TextChoices):
-        TODO = "todo", "нужно сделать"
+        TODO = "todo", "Нужно сделать"
         IN_PROGRESS = "progress", "В работе"
         REVIEW = "review", "На проверке"
         DONE = "done", "Готово"
@@ -88,6 +88,7 @@ class Task(models.Model):
         MEDIUM = "medium", "Средний"
         HIGH = "high", "Высокий"
         URGENTLY = "urgently", "Срочно"
+
     title = models.CharField(max_length=128, verbose_name="Заголовок задачи")
     description = models.TextField(blank=True, verbose_name="Описание")
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=SET_NULL, null=True, blank=True, related_name="assigned_tasks", verbose_name="Исполнитель")

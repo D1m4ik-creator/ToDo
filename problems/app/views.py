@@ -1,4 +1,3 @@
-from django.contrib.auth import authenticate
 from django.db import models
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -8,7 +7,11 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
+from django.contrib.auth import authenticate
 
+from .services.team_service import create
+from .services.auth_service import logout_user
+from .services.task_service import move_task, send_task_to_review
 from .serializers import *
 from .service import get_or_create_dynamic_id
 from .models import Team, TeamMember, Projects, Task
@@ -80,10 +83,10 @@ class LoginAPIView(APIView):
         email = data.get("email", None)
         username = data.get('username', None)
         password = data.get('password', None)
+
         if email is None or password is None:
             return Response({'error': 'Нужен и логин, и пароль'}, status=status.HTTP_400_BAD_REQUEST)
         user = authenticate(request, email=email, password=password)
-        print(user)
         if user:
             refresh = RefreshToken.for_user(user)
             return Response({
@@ -116,13 +119,10 @@ class LogoutAPIView(APIView):
         refresh_token = request.data.get('refresh')
         if not refresh_token:
             return Response({'error': 'Необходим Refresh token'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            token = RefreshToken(refresh_token)
-            token.blacklist() # Добавляем в чёрный список
-
-        except TokenError:
-            return Response({'error': 'Неверный Refresh token'}, status=status.HTTP_400_BAD_REQUEST)
+            logout_user(refresh_token)
+        except TokenError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'success': 'Выход успешен'}, status=status.HTTP_200_OK)
 
@@ -130,6 +130,7 @@ class LogoutAPIView(APIView):
 class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.all()
     serializer_class = TeamSerializers
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -138,13 +139,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     ).distinct()
 
     def perform_create(self, serializer):
-        team = serializer.save(owner=self.request.user)
-
-        TeamMember.objects.create(
-            team=team,
-            user=self.request.user,
-            role="owner"
-        )
+        create(serializer)
 
     @extend_schema(request=TeamMemberCreateSerializer, responses={201: None})
     @action(detail=True, methods=["post"], url_path='invite-by-dynamic-id')
@@ -187,6 +182,7 @@ class TeamViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=201)
             return Response(serializer.errors, status=400)
 
+
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
@@ -209,7 +205,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
 
         try:
-            task.send_to_review()
+            send_task_to_review(task=task, actor=request.user)
             return Response({'detail': 'Задача отправлена на проверку', 'status': task.status})
 
         except ValueError as e:
@@ -220,13 +216,12 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
         new_status = request.data.get("status")
 
-        if new_status in Task.Status.values:
-            task.status = new_status
-            task.save(update_fields=["status", "created_at"])
-            return Response({'status': task.status})
+        try:
+            move_task(task, new_status, request.user)
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({'detail': 'Недопустимый статус'}, status=status.HTTP_400_BAD_REQUEST)
-
+        return Response({'status': task.status})
 
 class ProjectsViewSet(viewsets.ModelViewSet):
     queryset = Projects.objects.all()
