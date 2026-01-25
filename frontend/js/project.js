@@ -41,11 +41,61 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initBoard();
+    initGlobalEvents();
 });
 
 async function initBoard() {
     await loadProject();
     await loadTasks();
+}
+
+function initGlobalEvents() {
+    // Закрытие по клику вне формы
+    document.addEventListener('click', (event) => {
+        const statuses = ['todo', 'progress', 'review', 'done'];
+
+        statuses.forEach(status => {
+            const form = document.getElementById(`inline-form-${status}`);
+            const btn = document.getElementById(`btn-${status}`);
+            const input = document.getElementById(`input-${status}`);
+
+            if (form && !form.classList.contains('hidden')) {
+                // Если клик не по форме и не по кнопке открытия
+                if (!form.contains(event.target) && !btn.contains(event.target)) {
+                    form.classList.add('hidden');
+                    // Возвращаем кнопку только если это был клик "отмены" (клиент сам наведет мышь, чтобы увидеть её снова)
+                    // Но для удобства можно вернуть видимость, если курсор остался над колонкой.
+                    // В данном случае лучше просто скрыть форму. Кнопка появится при событии mouseenter (hover).
+                    if (input) input.value = '';
+
+                    // Хак: Если мышь прямо сейчас над этой колонкой, кнопка должна быть видна.
+                    // Но проще довериться CSS hover логике: скрыли форму -> кнопки нет -> юзер дернул мышью -> кнопка появилась.
+                    // Если хотите, чтобы кнопка появлялась сразу при закрытии кликом вне:
+                    // btn.classList.remove('hidden');
+                    // (Оставляю закомментированным, чтобы соблюсти ваше требование "только в текущей")
+                }
+            }
+        });
+    });
+
+    // Закрытие по Esc
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            const statuses = ['todo', 'progress', 'review', 'done'];
+            statuses.forEach(status => {
+                const form = document.getElementById(`inline-form-${status}`);
+                const btn = document.getElementById(`btn-${status}`);
+                const input = document.getElementById(`input-${status}`);
+
+                if (form && !form.classList.contains('hidden')) {
+                    form.classList.add('hidden');
+                    // btn.classList.remove('hidden'); // Тоже убираем, чтобы не мелькали
+                    if (input) input.value = '';
+                }
+            });
+            closeModal();
+        }
+    });
 }
 
 
@@ -102,7 +152,6 @@ async function loadTasks() {
 
     const counters = { todo: 0, progress: 0, review: 0, done: 0 };
 
-    // Очистка колонок
     Object.keys(counters).forEach(status => {
         const col = document.getElementById(`col-${status}`);
         if(col) col.innerHTML = '';
@@ -168,7 +217,6 @@ async function onDrop(ev, status) {
     ev.preventDefault();
     const id = ev.dataTransfer.getData("taskId");
 
-    // Оптимистичное обновление UI (можно добавить) или просто перезагрузка
     await apiFetch(`${API_URL}/tasks/${id}/move/`, {
         method: 'PATCH',
         body: JSON.stringify({ status })
@@ -181,7 +229,6 @@ function allowDrop(ev) {
     ev.preventDefault();
 }
 
-// Функции подсветки (были в HTML, но логика нужна здесь или в CSS)
 function highlightCol(status) {
     document.getElementById(`container-${status}`).classList.add('bg-slate-200');
 }
@@ -197,11 +244,23 @@ function unhighlightCol(status) {
 function toggleInlineForm(status) {
     const form = document.getElementById(`inline-form-${status}`);
     const btn = document.getElementById(`btn-${status}`);
+    const input = document.getElementById(`input-${status}`);
+
+    // Закрываем другие формы, но НЕ трогаем их кнопки (пусть hover разбирается)
+    ['todo', 'progress', 'review', 'done'].forEach(s => {
+        if (s !== status) {
+            const otherForm = document.getElementById(`inline-form-${s}`);
+            if (!otherForm.classList.contains('hidden')) {
+                otherForm.classList.add('hidden');
+                // document.getElementById(`btn-${s}`).classList.remove('hidden'); // УБРАЛИ ЭТУ СТРОКУ
+            }
+        }
+    });
 
     if (form.classList.contains('hidden')) {
         form.classList.remove('hidden');
         btn.classList.add('hidden');
-        document.getElementById(`input-${status}`).focus();
+        input.focus();
     } else {
         form.classList.add('hidden');
         btn.classList.remove('hidden');
@@ -228,7 +287,10 @@ async function quickCreate(status) {
         });
 
         input.value = '';
-        toggleInlineForm(status);
+        // Скрываем форму, восстанавливаем кнопку
+        document.getElementById(`inline-form-${status}`).classList.add('hidden');
+        document.getElementById(`btn-${status}`).classList.remove('hidden');
+
         loadTasks();
     } catch (e) {
         console.error(e);
@@ -256,11 +318,7 @@ async function openEdit(id) {
     document.getElementById('edit-title').value = task.title;
     document.getElementById('edit-desc').value = task.description || '';
     document.getElementById('edit-priority').value = task.priority;
-    if(task.assigned_to) {
-        document.getElementById('edit-assignee').value = task.assigned_to;
-    } else {
-         document.getElementById('edit-assignee').value = "";
-    }
+    document.getElementById('edit-assignee').value = task.assigned_to || "";
 
     document.getElementById('modal-title').innerText = 'Редактирование';
     document.getElementById('delete-btn').classList.remove('hidden');
@@ -271,7 +329,6 @@ async function openEdit(id) {
 async function saveTask() {
     const id = document.getElementById('edit-task-id').value;
 
-    // ИСПРАВЛЕНИЕ: получаем значения через document.getElementById
     const titleVal = document.getElementById('edit-title').value;
     const descVal = document.getElementById('edit-desc').value;
     const priorityVal = document.getElementById('edit-priority').value;
@@ -287,7 +344,7 @@ async function saveTask() {
     };
 
     if (!payload.title) {
-        alert("Введите название задачи"); // Заменили toast на alert, так как toast функции нет
+        alert("Введите название задачи");
         return;
     }
 

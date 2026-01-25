@@ -195,7 +195,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         queryset = Task.objects.filter(project__team__members=user).distinct()
         if project_id:
             queryset = queryset.filter(project_id=project_id)
-        return queryset.order_by("priority", "-created_at")
+        return queryset.order_by("-priority", "-created_at")
 
     def perform_create(self, serializer):
         serializer.save()
