@@ -70,6 +70,7 @@ class TeamMemberCreateSerializer(serializers.Serializer):
         team = self.context.get("team")
         request_user = self.context.get("request").user
         invitee_id = get_user_id_by_dynamic_code(code)
+
         if not team.is_owner(request_user):
             raise serializers.ValidationError("Нет прав приглашать")
 

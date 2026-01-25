@@ -25,7 +25,19 @@ function renderDashboard(user) {
     // Сразу переключаем на обзор
     switchTab('overview');
 }
-
+const TaskStore = {
+    tasks: [],
+    set(tasks) {
+        this.tasks = tasks;
+    },
+    getByStatus(status) {
+        return this.tasks.filter(t => t.status === status);
+    },
+    update(id, patch) {
+        const task = this.tasks.find(t => t.id === id);
+        if (task) Object.assign(task, patch);
+    }
+};
 // Вкладка "Обзор"
 async function renderOverviewTab(container) {
     // 1. Сначала показываем то, что есть в памяти (или тире)
