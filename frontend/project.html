@@ -29,7 +29,7 @@
             <div class="flex items-center gap-2 md:gap-3">
                 <div id="project-members-list" class="flex -space-x-2"></div>
                 <div class="w-px h-6 bg-slate-200"></div>
-                <button onclick="openCreateTaskModal()"
+                <button onclick="openCreateTask()"
                         class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 md:px-3 py-1.5 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-1">
                     <span>+</span> <span class="hidden sm:inline">Задача</span>
                 </button>
@@ -45,7 +45,7 @@
             <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
                  id="container-todo"
                  ondragover="allowDrop(event)"
-                 ondrop="drop(event, 'todo')"
+                 ondrop="onDrop(event, 'todo')"
                  ondragenter="highlightCol('todo')"
                  ondragleave="unhighlightCol('todo')"
                  onmouseenter="showColumnButton('todo')"
@@ -69,7 +69,7 @@
             <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
                  id="container-progress"
                  ondragover="allowDrop(event)"
-                 ondrop="drop(event, 'progress')"
+                 ondrop="onDrop(event, 'progress')"
                  ondragenter="highlightCol('progress')"
                  ondragleave="unhighlightCol('progress')"
                  onmouseenter="showColumnButton('progress')"
@@ -93,7 +93,7 @@
             <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
                  id="container-review"
                  ondragover="allowDrop(event)"
-                 ondrop="drop(event, 'review')"
+                 ondrop="onDrop(event, 'review')"
                  ondragenter="highlightCol('review')"
                  ondragleave="unhighlightCol('review')"
                  onmouseenter="showColumnButton('review')"
@@ -117,7 +117,7 @@
             <div class="w-72 flex flex-col bg-slate-100/50 rounded-lg p-2 border border-slate-200 transition-all h-[70vh] max-h-[520px]"
                  id="container-done"
                  ondragover="allowDrop(event)"
-                 ondrop="drop(event, 'done')"
+                 ondrop="onDrop(event, 'done')"
                  ondragenter="highlightCol('done')"
                  ondragleave="unhighlightCol('done')"
                  onmouseenter="showColumnButton('done')"
@@ -144,7 +144,7 @@
         <div class="bg-white w-full max-w-md rounded-xl p-5 shadow-xl" id="task-modal-content">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-slate-800" id="modal-title">Новая задача</h2>
-                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 transition">
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
@@ -181,7 +181,7 @@
                 </div>
 
                 <div class="flex gap-2 pt-2">
-                    <button onclick="saveTaskUpdate()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg font-semibold text-sm transition">Сохранить</button>
+                    <button onclick="saveTask()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg font-semibold text-sm transition">Сохранить</button>
                     <button onclick="deleteTask()" id="delete-btn" class="px-3 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg font-semibold transition hidden">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
                     </button>
