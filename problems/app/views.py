@@ -165,6 +165,11 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer = TeamMemberSerializer(members, many=True)
         return Response(serializer.data)
 
+    @extend_schema(request=TeamMemberSerializer, responses={201: None})
+    @action(detail=True, methods=["delete"], url_path='remove-member')
+    def remove_member(self, request):
+        print(request.data)
+
     @extend_schema(request=ProjectsSerializers, responses={201: None})
     @action(detail=True, methods=["get", "post"], url_path="projects")
     def projects(self, requests, pk=None):
