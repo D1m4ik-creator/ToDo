@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.contrib.auth import authenticate
 
-from .services.team_service import create
+from .services.team_service import create_member, delete_member
 from .services.auth_service import logout_user
 from .services.task_service import move_task, send_task_to_review
 from .serializers import *
@@ -139,7 +139,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     ).distinct()
 
     def perform_create(self, serializer):
-        create(serializer)
+        create_member(self , serializer)
 
     @extend_schema(request=TeamMemberCreateSerializer, responses={201: None})
     @action(detail=True, methods=["post"], url_path='invite-by-dynamic-id')
@@ -165,10 +165,14 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer = TeamMemberSerializer(members, many=True)
         return Response(serializer.data)
 
-    @extend_schema(request=TeamMemberSerializer, responses={201: None})
+    @extend_schema(responses={204: None})
     @action(detail=True, methods=["delete"], url_path='remove-member')
-    def remove_member(self, request):
-        print(request.data)
+    def remove_member(self, request, pk=None):
+        try:
+            member = delete_member(self, request)
+        except TeamMember.DoesNotExist as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "Член команды спешно удалён"}, status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(request=ProjectsSerializers, responses={201: None})
     @action(detail=True, methods=["get", "post"], url_path="projects")

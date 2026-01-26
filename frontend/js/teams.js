@@ -154,6 +154,34 @@ async function loadTeamMembers(teamId, teamName, gridId) {
     }
 }
 
+async function removeMember(teamId, userId, username, teamName) {
+    if (!confirm(`Вы уверены, что хотите удалить пользователя ${username} из команды?`)) return;
+
+    const token = localStorage.getItem('access'); //
+
+    try {
+        const response = await fetch(`${API_URL}/teams/${teamId}/remove-member/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ user_id: userId }) // Бэк обычно ожидает ID удаляемого пользователя
+        });
+
+        if (response.ok) {
+            showToast(`Пользователь ${username} удален`, "success");
+            // Обновляем список участников в текущем интерфейсе
+            loadTeamMembers(teamId, teamName, `members-grid-${teamId}`);
+        } else {
+            const data = await response.json();
+            showToast(data.detail || "Ошибка при удалении", "error");
+        }
+    } catch (err) {
+        showToast("Ошибка соединения с сервером", "error");
+    }
+}
+
 /**
  * Отрисовка списка участников (внутренний контент)
  */
@@ -204,17 +232,29 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
     const membersHtml = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             ${otherMembers.map(m => {
-                const isMe = m.user.id === currentUserId;
+                const isMe = m.user.id === currentUserId; //
                 return `
-                    <div class="relative p-5 rounded-2xl border ${isMe ? 'border-indigo-500 bg-indigo-50/30 ring-2 ring-indigo-100' : 'border-slate-100 bg-white'} flex items-center gap-4">
-                        ${isMe ? '<span class="absolute -top-2 -left-2 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold">ЭТО ВЫ</span>' : ''}
-                        <div class="w-12 h-12 ${isMe ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'} rounded-full flex items-center justify-center font-bold">
-                            ${m.user.username[0].toUpperCase()}
+                    <div class="relative p-5 rounded-2xl border ${isMe ? 'border-indigo-500 bg-indigo-50/30 ring-2 ring-indigo-100' : 'border-slate-100 bg-white'} flex items-center justify-between gap-4 group">
+                        <div class="flex items-center gap-4">
+                            ${isMe ? '<span class="absolute -top-2 -left-2 bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-md font-bold">ЭТО ВЫ</span>' : ''}
+                            <div class="w-12 h-12 ${isMe ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'} rounded-full flex items-center justify-center font-bold">
+                                ${m.user.username[0].toUpperCase()}
+                            </div>
+                            <div>
+                                <p class="font-bold ${isMe ? 'text-indigo-900' : 'text-slate-800'}">${m.user.username}</p>
+                                <p class="text-xs text-slate-500">${m.role_display}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="font-bold ${isMe ? 'text-indigo-900' : 'text-slate-800'}">${m.user.username}</p>
-                            <p class="text-xs text-slate-500">${m.role_display}</p>
-                        </div>
+
+                        ${isOwnerMe && !isMe ? `
+                            <button onclick="removeMember(${teamId}, ${m.user.id}, '${m.user.username}', '${teamName.replace(/'/g, "\\'")}')"
+                                    class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                    title="Удалить участника">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        ` : ''}
                     </div>`;
             }).join('')}
         </div>
@@ -343,12 +383,38 @@ async function loadTeamProjects(teamId) {
     }
 }
 
+async function deleteProject(teamId, projectId, projectName) {
+    if (!confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Все задачи внутри будут стерты.`)) return;
+
+    const token = localStorage.getItem('access'); //
+
+    try {
+        const response = await fetch(`${API_URL}/projects/${projectId}/`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}` //
+            }
+        });
+
+        if (response.ok) {
+            showToast("Проект успешно удален", "success");
+            // Обновляем только текущую вкладку проектов
+            loadTeamProjects(teamId); //
+        } else {
+            const data = await response.json();
+            showToast(data.detail || "Ошибка при удалении проекта", "error");
+        }
+    } catch (err) {
+        showToast("Ошибка связи с сервером", "error");
+    }
+}
+
 /**
  * Отрисовка сетки проектов
  */
 function renderProjectsInside(teamId, projects) {
     const container = document.getElementById(`team-content-area-${teamId}`);
-    if (!container) return;
+    if (!container) return; //
 
     const createBtnHtml = `
         <button onclick="openCreateProjectModal(${teamId})"
@@ -362,17 +428,26 @@ function renderProjectsInside(teamId, projects) {
 
     const projectsHtml = projects.map(p => `
         <div class="group p-6 rounded-3xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50/50 transition-all relative overflow-hidden flex flex-col justify-between min-h-[160px]">
+            <button onclick="deleteProject(${teamId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}')"
+                    class="absolute top-4 right-4 z-10 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                    title="Удалить проект">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+
             <div class="absolute -right-4 -bottom-4 text-slate-50 opacity-10 group-hover:text-indigo-100 group-hover:opacity-100 transition-all">
                 <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
             </div>
+
             <div class="relative">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xl shadow-sm">📂</div>
-                    <span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-widest">${p.task_count || 0} Задач</span>
                 </div>
                 <h5 class="font-black text-slate-800 text-lg mb-1 group-hover:text-indigo-600 transition-colors">${p.name}</h5>
                 <p class="text-xs text-slate-400 line-clamp-2 mb-4 font-medium">${p.description || 'Без описания'}</p>
             </div>
+
             <button onclick="openProject(${p.id})"
                     class="relative w-full py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
                 Открыть доску
