@@ -66,7 +66,7 @@ function renderForm(title, type) {
         <div class="max-w-md mx-auto bg-white p-10 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 animate-fade-in">
             <h2 class="text-3xl font-bold mb-8 text-center text-slate-800">${title}</h2>
 
-            <div id="google-button-container" class="mb-6 w-full flex justify-center"></div>
+
 
             <div class="relative flex py-2 items-center mb-6">
                 <div class="flex-grow border-t border-slate-200"></div>
@@ -83,6 +83,14 @@ function renderForm(title, type) {
                 <button type="submit" class="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold hover:bg-indigo-700 transition mt-4 shadow-lg shadow-indigo-200">
                     ${isReg ? 'Создать аккаунт' : 'Войти'}
                 </button>
+
+                <div class="relative flex py-2 items-center mb-6">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase font-bold tracking-widest">Или через социальные сети</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                 </div>
+
+                <div id="google-button-container" class="mb-6 w-full flex justify-center"></div>
 
                 <p class="text-center text-sm text-slate-400 mt-6 cursor-pointer hover:text-indigo-600 transition" onclick="showPage('${isReg ? 'login' : 'register'}')">
                     ${isReg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Регистрация'}
