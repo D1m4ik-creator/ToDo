@@ -414,7 +414,7 @@ async function deleteProject(teamId, projectId, projectName) {
  */
 function renderProjectsInside(teamId, projects) {
     const container = document.getElementById(`team-content-area-${teamId}`);
-    if (!container) return; //
+    if (!container) return;
 
     const createBtnHtml = `
         <button onclick="openCreateProjectModal(${teamId})"
@@ -428,13 +428,20 @@ function renderProjectsInside(teamId, projects) {
 
     const projectsHtml = projects.map(p => `
         <div class="group p-6 rounded-3xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50/50 transition-all relative overflow-hidden flex flex-col justify-between min-h-[160px]">
-            <button onclick="deleteProject(${teamId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}')"
-                    class="absolute top-4 right-4 z-10 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                    title="Удалить проект">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
+            <div class="absolute top-4 right-4 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onclick="openEditProjectModal(${teamId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', '${(p.description || '').replace(/'/g, "\\'").replace(/\n/g, "\\n")}')"
+                        class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl" title="Редактировать">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </button>
+                <button onclick="deleteProject(${teamId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}')"
+                        class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl" title="Удалить">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
 
             <div class="absolute -right-4 -bottom-4 text-slate-50 opacity-10 group-hover:text-indigo-100 group-hover:opacity-100 transition-all">
                 <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
@@ -580,4 +587,62 @@ function switchTeamTab(teamId, tab, teamName) {
         btnProjects.classList.add(...activeClasses);
         loadTeamProjects(teamId);
     }
+}
+
+function openEditProjectModal(teamId, projectId, currentName, currentDesc) {
+    const modal = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    const inputName = document.getElementById('team-modal-input');
+    const actionBtn = document.getElementById('modal-action-btn');
+    const dangerZone = document.getElementById('modal-danger-zone');
+
+    modal.classList.remove('hidden');
+    title.innerText = "Редактирование проекта";
+    inputName.value = currentName;
+    actionBtn.innerText = "Сохранить изменения";
+    if (dangerZone) dangerZone.classList.add('hidden');
+
+    // Проверяем/создаем поле описания
+    let descInput = document.getElementById('project-desc-modal-input');
+    if (!descInput) {
+        const descHtml = `
+            <div id="project-desc-wrapper" class="mt-4">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Описание проекта</label>
+                <textarea id="project-desc-modal-input" rows="3"
+                          class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-medium"></textarea>
+            </div>`;
+        inputName.insertAdjacentHTML('afterend', descHtml);
+        descInput = document.getElementById('project-desc-modal-input');
+    } else {
+        document.getElementById('project-desc-wrapper').classList.remove('hidden');
+    }
+    descInput.value = currentDesc;
+
+    actionBtn.onclick = async () => {
+        const name = inputName.value.trim();
+        const description = descInput.value.trim();
+
+        if (!name) return showToast("Название не может быть пустым", "error");
+
+        try {
+            const response = await fetch(`${API_URL}/projects/${projectId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access')}`
+                },
+                body: JSON.stringify({ name, description })
+            });
+
+            if (response.ok) {
+                showToast("Проект обновлен!", "success");
+                closeTeamSettings();
+                loadTeamProjects(teamId); // Перерисовываем список проектов
+            } else {
+                showToast("Ошибка при сохранении", "error");
+            }
+        } catch (err) {
+            showToast("Сервер не отвечает", "error");
+        }
+    };
 }
