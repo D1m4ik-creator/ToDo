@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -10,7 +11,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.contrib.auth import authenticate
 
 from .services.team_service import create_member, delete_member
-from .services.auth_service import logout_user
+from .services.auth_service import logout_user, GoogleAuthService
 from .services.task_service import move_task, send_task_to_review
 from .serializers import *
 from .service import get_or_create_dynamic_id
@@ -30,6 +31,33 @@ class MeView(APIView):
             "email": request.user.email,
             "public_id": dynamic_id
         })
+
+class GoogleAuthAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data["token"]
+
+        user, tokens = GoogleAuthService.register_or_login_google(
+            google_token=token,
+            client_id=settings.GOOGLE_AUTH_CLIENT_ID
+        )
+
+        return Response(
+            {
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "display_name": user.get_full_name() or user.username,
+                },
+                "tokens": tokens,
+            },
+            status=status.HTTP_200_OK
+        )
+
 
 
 class RegistrationAPIView(APIView):
@@ -239,3 +267,4 @@ class ProjectsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Projects.objects.filter(team__members=self.request.user).distinct()
+

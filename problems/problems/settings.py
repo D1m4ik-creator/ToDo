@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-$n&mtawz=5qxkw$s(0fvj!^t&a6_piyzhk0*_p9liflc7-i1n('
 
 DEBUG = True
-
+GOOGLE_AUTH_CLIENT_ID = os.environ.get("CLIENT_ID")
 ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0", "localhost"]
 CORS_ALLOW_ALL_ORIGINS = True
 AUTH_USER_MODEL = "app.User"
@@ -96,6 +99,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 from datetime import timedelta
 
