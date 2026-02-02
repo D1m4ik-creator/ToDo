@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-$n&mtawz=5qxkw$s(0fvj!^t&a6_piyzhk0*_p9liflc7-i1n('
 
 DEBUG = True
-
+GOOGLE_AUTH_CLIENT_ID = os.environ.get("CLIENT_ID")
 ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0", "localhost"]
 CORS_ALLOW_ALL_ORIGINS = True
 AUTH_USER_MODEL = "app.User"
@@ -101,6 +104,8 @@ STATIC_ROOT = BASE_DIR / "static"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
 from datetime import timedelta
 
 SIMPLE_JWT = {
@@ -132,3 +137,12 @@ CACHES = {
     }
 }
 
+
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = 'Europe/Moscow'  # или ваша
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True

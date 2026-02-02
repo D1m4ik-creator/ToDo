@@ -7,8 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView
 )
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from app.views import RegistrationAPIView, LoginAPIView, LogoutAPIView, MeView, TeamViewSet, TaskViewSet, ProjectsViewSet
-
+from app.views import *
 
 router = DefaultRouter()
 router.register(r"teams", TeamViewSet)
@@ -26,7 +25,8 @@ urlpatterns = [
     path("api/register/", RegistrationAPIView.as_view(), name="register"), # Регистрация
     path("api/login/", LoginAPIView.as_view(), name="login"),# Вход
     path("api/logout/", LogoutAPIView.as_view(), name="logout"), # Выход
-
+    # Google auth
+    path("api/auth/google/callback/", GoogleAuthAPIView.as_view(), name="google"),
     # Возвращаем данные текущего пользователя
     path("api/auth/me/", MeView.as_view(), name="me"),
 

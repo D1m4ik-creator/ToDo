@@ -146,3 +146,5 @@ class TaskSerializer(serializers.ModelSerializer):
     def get_priority_display(self, obj):
         return obj.get_priority_display()
 
+class GoogleAuthSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
