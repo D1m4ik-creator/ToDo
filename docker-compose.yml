@@ -56,6 +56,14 @@ services:
       - "6379:6379"
     networks:
       - app_network
+  celery:
+    build: .
+    command: celery -A problems worker --loglevel=info
+    depends_on:
+      - redis
+      - db
+    networks:
+      - app_network
 
 networks:
   app_network:
