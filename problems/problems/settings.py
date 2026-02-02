@@ -63,7 +63,7 @@ DATABASES = {
         "NAME": "tododb",
         "USER": "postgres",
         "PASSWORD": "L7062006v.",
-        "HOST": "localhost",
+        "HOST": "db",
         "PORT": "5432",
         'OPTIONS': {
             'client_encoding': 'UTF8',
@@ -95,7 +95,11 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "static"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 from datetime import timedelta
 
@@ -127,3 +131,4 @@ CACHES = {
         }
     }
 }
+
