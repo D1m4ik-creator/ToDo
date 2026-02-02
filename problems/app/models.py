@@ -116,3 +116,34 @@ class Task(models.Model):
 
     def __str__(self):
         return f"[{self.project.name}] | {self.title}"
+
+
+class Notification(models.Model):
+    class Type(models.TextChoices):
+        TEAM_INVITE = "team_invite", "Приглашение в команду"
+        INVITE_ACCEPTED = "invite_accepted", "Приглашение принято"
+        INVITE_DECLINED = "invite_declined", "Приглашение отклонено"
+        TASK_ASSIGNED = "task_assigned", "Назначена задача"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    type = models.CharField(max_length=50, choices=Type.choices)
+    payload = models.JSONField(help_text="Контекст уведомления (ids, имена, ссылки)")
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "is_read"]),
+            models.Index(fields=["type"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "type"],
+                condition=models.Q(type="team_invite"),
+                name="unique_pending_invite"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.type} → {self.user}"
