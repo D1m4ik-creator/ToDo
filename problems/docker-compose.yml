@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   db:
     image: postgres:17
@@ -17,5 +16,61 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
+    networks:
+      - app_network
+
+  backend:
+    build:
+      context: ./problems
+      dockerfile: Dockerfile
+    container_name: backend
+    env_file:
+      - ./problems/problems/.env
+    depends_on:
+      - db
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    networks:
+      - app_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    expose:
+      - "5000"
+    networks:
+      - app_network
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+  celery:
+    build: .
+    command: celery -A problems worker --loglevel=info
+    depends_on:
+      - redis
+      - db
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    name: app_network
+
 volumes:
   pgdata:
