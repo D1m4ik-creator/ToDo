@@ -3,6 +3,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateNav();
     if (token) {
         showPage('dashboard');
+        Notifications.init();
     } else {
         showPage('home');
     }

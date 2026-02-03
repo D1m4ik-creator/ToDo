@@ -1,5 +1,5 @@
 from celery import shared_task
-from app.services.notification_service import NotificationService
+from app.services.events import NotificationService
 from app.models import Team
 from django.contrib.auth import get_user_model
 

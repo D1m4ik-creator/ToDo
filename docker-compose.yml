@@ -23,6 +23,7 @@ services:
     build:
       context: ./problems
       dockerfile: Dockerfile
+    image: todo:latest
     container_name: backend
     env_file:
       - ./problems/problems/.env
@@ -57,8 +58,10 @@ services:
     networks:
       - app_network
   celery:
-    build: .
+    image: todo:latest
     command: celery -A problems worker --loglevel=info
+    volumes:
+      - .:/code
     depends_on:
       - redis
       - db

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
 
-from .models import TeamMember, Team, Projects, Task
+from .models import TeamMember, Team, Projects, Task, Notification
 from .service import get_or_create_dynamic_id, get_user_id_by_dynamic_code
 
 
@@ -148,3 +148,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class GoogleAuthSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
+
+
+class NotificationsSerializer(serializers.Serializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "type","payload", "is_read","created_at"]

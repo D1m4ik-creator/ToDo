@@ -268,3 +268,47 @@ class ProjectsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Projects.objects.filter(team__members=self.request.user).distinct()
 
+
+class NotificationsViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationsSerializer
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=["get"], url_path="unread")
+    def unread(self, request):
+        qs = self.get_queryset().filter(is_read=False)
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="read")
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response({"statis": "ok"})
+
+
+class TeamInviteActionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, team_id, action):
+        team = Team.objects.get(id=team_id)
+
+        if action == "accept":
+            TeamInviteActionService.accept(
+                user=request.user,
+                team=team
+            )
+
+        elif action == "decline":
+            TeamInviteActionService.decline(
+                user=request.user,
+                team=team
+            )
+
+        else:
+            return Response({"detail": "Invalid action"}, status=400)
+
+        return Response({"status": "ok"})

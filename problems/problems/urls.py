@@ -13,6 +13,7 @@ router = DefaultRouter()
 router.register(r"teams", TeamViewSet)
 router.register(r"tasks", TaskViewSet)
 router.register(r"projects", ProjectsViewSet)
+router.register(r"notifications", NotificationsViewSet, basename="notifications")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,6 +31,11 @@ urlpatterns = [
     # Возвращаем данные текущего пользователя
     path("api/auth/me/", MeView.as_view(), name="me"),
 
+    # Приглашение или отклонение в команду
+    path("api/team-invites/<int:pk>/accept/", TeamInviteActionView.as_view(), name='team-invite-accept'),
+    path("api/team-invites/<int:pk>/decline/", TeamInviteActionView.as_view(), name='team-invite-decline'),
+
+    # Чтение уведомления
     # Документация
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

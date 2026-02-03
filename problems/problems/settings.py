@@ -66,7 +66,7 @@ DATABASES = {
         "NAME": "tododb",
         "USER": "postgres",
         "PASSWORD": "L7062006v.",
-        "HOST": "db",
+        "HOST": "127.0.0.1",
         "PORT": "5432",
         'OPTIONS': {
             'client_encoding': 'UTF8',
@@ -138,7 +138,7 @@ CACHES = {
 }
 
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
