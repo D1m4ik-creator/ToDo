@@ -16,7 +16,6 @@ def send_team_invite_notification(self, invited_user_id, team_id, inviter_id):
     invited_user = User.objects.get(id=invited_user_id)
     team = Team.objects.get(id=team_id)
     inviter = User.objects.get(id=inviter_id)
-
     NotificationService.team_invite(
         invited_user=invited_user,
         team=team,

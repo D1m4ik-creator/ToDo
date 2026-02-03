@@ -105,10 +105,13 @@ const Notifications = {
 
             let actionButtons = '';
             if (item.type === 'team_invite') {
+                const inviteId = item.payload.invite_id;
                 actionButtons = `
                     <div class="flex gap-2 mt-3">
-                        <button onclick="Notifications.handleInvite(${item.payload.team_id}, 'accept', ${item.id})" class="flex-1 bg-indigo-600 text-white text-xs py-2 rounded-xl font-bold hover:bg-indigo-700 transition">Принять</button>
-                        <button onclick="Notifications.handleInvite(${item.payload.team_id}, 'decline', ${item.id})" class="flex-1 bg-slate-200 text-slate-600 text-xs py-2 rounded-xl font-bold hover:bg-slate-300 transition">Отклонить</button>
+                        <button onclick="Notifications.handleInvite(${inviteId}, 'accept', ${item.id})"
+                                class="flex-1 bg-indigo-600 text-white text-xs py-2 rounded-xl font-bold hover:bg-indigo-700 transition">Принять</button>
+                        <button onclick="Notifications.handleInvite(${inviteId}, 'decline', ${item.id})"
+                                class="flex-1 bg-slate-200 text-slate-600 text-xs py-2 rounded-xl font-bold hover:bg-slate-300 transition">Отклонить</button>
                     </div>
                 `;
             } else {
@@ -131,17 +134,26 @@ const Notifications = {
         return "У вас новое уведомление";
     },
 
-    async handleInvite(teamId, action, notifId) {
+    async handleInvite(inviteId, action, notifId) { // Переименовали для ясности
         try {
-            const response = await fetch(`${API_URL}/team-invites/${teamId}/${action}/`, {
+            // Теперь URL будет правильным: /api/team-invites/42/accept/
+            const response = await fetch(`${API_URL}/team-invites/${inviteId}/${action}/`, {
                 method: 'POST',
                 headers: this.getHeaders()
             });
 
             if (response.ok) {
                 await this.markAsRead(notifId);
-                if (typeof showToast === 'function') showToast(action === 'accept' ? "Вы вступили в команду" : "Приглашение отклонено");
-                if (action === 'accept') location.reload();
+                if (typeof showToast === 'function')
+                    showToast(action === 'accept' ? "Вы вступили в команду" : "Приглашение отклонено", "success");
+
+                if (action === 'accept') {
+                    // Небольшая задержка перед релоадом, чтобы пользователь успел увидеть тост
+                    setTimeout(() => location.reload(), 1000);
+                }
+            } else {
+                const data = await response.json();
+                if (typeof showToast === 'function') showToast(data.detail || "Ошибка", "error");
             }
         } catch (err) {
             console.error("Действие не удалось", err);

@@ -180,7 +180,17 @@ class TeamViewSet(viewsets.ModelViewSet):
         )
 
         if serializer.is_valid():
-            serializer.save()
+            team_member = serializer.save()
+
+
+            from .tasks import send_team_invite_notification
+
+            send_team_invite_notification(
+                invited_user_id=team_member.user.id,
+                team_id=team.id,
+                inviter_id=request.user.id
+            )
+
             return Response({"detail": "Приглашение успешно отправлено"}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
