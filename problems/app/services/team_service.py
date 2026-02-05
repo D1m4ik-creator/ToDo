@@ -27,17 +27,10 @@ class TeamInviteService:
     @staticmethod
     @transaction.atomic
     def accept(user, team):
-        member = TeamMember.objects.select_for_update().filter(
-            team=team,
-            user=user,
-            is_accepted=False
-        ).first()
+        if TeamMember.objects.filter(user=user, team=team).exists():
+            return TeamMember.objects.get(user=user, team=team)
 
-        if not member:
-            return PermissionDenied("Нет активного приглашения")
-
-        member.is_accepted = True
-        member.save(update_fields=["is_accepted"])
+        member = TeamMember.objects.create(user=user, team=team, role=TeamMember.Roler.MEMBER, is_accepted=True)
         NotificationService.invite_accepted(team=team, invited_user=user)
         return member
 

@@ -178,23 +178,19 @@ class TeamViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'team': team, 'request': request}
         )
-
         if serializer.is_valid():
-            team_member = serializer.save()
+            invitee = serializer.validated_data['invitee']
 
+        from .tasks import send_team_invite_notification
+        send_team_invite_notification(
+            invited_user_id=invitee.id,
+            team_id=team.id,
+            inviter_id=request.user.id
+        )
 
-            from .tasks import send_team_invite_notification
-            print(team_member)
-            send_team_invite_notification(
-                invited_user_id=team_member
-                .user.id,
-                team_id=team.id,
-                inviter_id=request.user.id
-            )
+        return Response({"detail": "Приглашение успешно отправлено"}, status=status.HTTP_201_CREATED)
 
-            return Response({"detail": "Приглашение успешно отправлено"}, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(request=TeamMemberSerializer, responses={201: None})
     @action(detail=True, methods=["get"], url_path="members")
