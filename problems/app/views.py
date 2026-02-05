@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.contrib.auth import authenticate
 
-from .services.team_service import create_member, delete_member
+from .services.team_service import create_member, delete_member, TeamInviteService
 from .services.auth_service import logout_user, GoogleAuthService
 from .services.task_service import move_task, send_task_to_review
 from .serializers import *
@@ -184,9 +184,10 @@ class TeamViewSet(viewsets.ModelViewSet):
 
 
             from .tasks import send_team_invite_notification
-
+            print(team_member)
             send_team_invite_notification(
-                invited_user_id=team_member.user.id,
+                invited_user_id=team_member
+                .user.id,
                 team_id=team.id,
                 inviter_id=request.user.id
             )
@@ -305,15 +306,14 @@ class TeamInviteActionView(APIView):
 
     def post(self, request, team_id, action):
         team = Team.objects.get(id=team_id)
-
         if action == "accept":
-            TeamInviteActionService.accept(
+            TeamInviteService.accept(
                 user=request.user,
                 team=team
             )
 
         elif action == "decline":
-            TeamInviteActionService.decline(
+            TeamInviteService.decline(
                 user=request.user,
                 team=team
             )

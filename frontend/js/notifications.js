@@ -102,15 +102,15 @@ const Notifications = {
         this.items.forEach(item => {
             const div = document.createElement('div');
             div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-all";
-
             let actionButtons = '';
             if (item.type === 'team_invite') {
-                const inviteId = item.payload.invite_id;
+                // Берем team_id, так как вьюшка TeamInviteActionView ждет именно его
+                const teamId = item.payload.team_id;
                 actionButtons = `
                     <div class="flex gap-2 mt-3">
-                        <button onclick="Notifications.handleInvite(${inviteId}, 'accept', ${item.id})"
+                        <button onclick="Notifications.handleInvite(${teamId}, 'accept', ${item.id})"
                                 class="flex-1 bg-indigo-600 text-white text-xs py-2 rounded-xl font-bold hover:bg-indigo-700 transition">Принять</button>
-                        <button onclick="Notifications.handleInvite(${inviteId}, 'decline', ${item.id})"
+                        <button onclick="Notifications.handleInvite(${teamId}, 'decline', ${item.id})"
                                 class="flex-1 bg-slate-200 text-slate-600 text-xs py-2 rounded-xl font-bold hover:bg-slate-300 transition">Отклонить</button>
                     </div>
                 `;

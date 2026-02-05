@@ -57,13 +57,13 @@ class TeamMemberCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         team = self.context.get('team')
         invitee = validated_data.get('invitee')
-
-        return TeamMember.objects.create(
+        team_member, created = TeamMember.objects.update_or_create(
             user=invitee,
             team=team,
             role=TeamMember.Roler.MEMBER,
             is_accepted=False
         )
+        return team_member
 
     def validate(self, attrs):
         code = attrs.get('dynamic_id')
@@ -150,7 +150,7 @@ class GoogleAuthSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
 
 
-class NotificationsSerializer(serializers.Serializer):
+class NotificationsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ["id", "type","payload", "is_read","created_at"]

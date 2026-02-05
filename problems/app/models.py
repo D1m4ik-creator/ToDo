@@ -137,13 +137,6 @@ class Notification(models.Model):
             models.Index(fields=["user", "is_read"]),
             models.Index(fields=["type"]),
         ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "type"],
-                condition=models.Q(type="team_invite"),
-                name="unique_pending_invite"
-            )
-        ]
 
     def __str__(self):
         return f"{self.type} → {self.user}"

@@ -38,7 +38,7 @@ class TeamInviteService:
 
         member.is_accepted = True
         member.save(update_fields=["is_accepted"])
-        NotificationService.invite_accepted(team=team, user=user)
+        NotificationService.invite_accepted(team=team, invited_user=user)
         return member
 
     @staticmethod
@@ -46,7 +46,7 @@ class TeamInviteService:
     def decline(user, team):
         member = TeamMember.objects.select_for_update().filter(
             team=team,
-            user=user,
+            invited_user=user,
             is_accepted=False
         ).first()
 
