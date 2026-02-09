@@ -104,7 +104,6 @@ const Notifications = {
             div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 transition-all";
             let actionButtons = '';
             if (item.type === 'team_invite') {
-                // Берем team_id, так как вьюшка TeamInviteActionView ждет именно его
                 const teamId = item.payload.team_id;
                 actionButtons = `
                     <div class="flex gap-2 mt-3">
@@ -131,6 +130,8 @@ const Notifications = {
     formatMessage(item) {
         if (item.type === 'team_invite') return `Вас пригласили в команду <span class="font-bold text-indigo-600">${item.payload.team_name}</span>`;
         if (item.type === 'task_assigned') return `Новая задача: <span class="font-bold">${item.payload.task_title}</span>`;
+        if (item.type === 'invite_accepted') return `Приглашение принято <span class="font-bold text-indigo-600">${item.payload.username}</span>-ом в команду <span class="font-bold">${item.payload.team_name}</span>`;
+        if (item.type === 'invite_declined') return `Приглашение отклонено <span class="font-bold text-indigo-600">${item.payload.username}</span>-ом в команду <span class="font-bold">${item.payload.team_name}</span>`;
         return "У вас новое уведомление";
     },
 

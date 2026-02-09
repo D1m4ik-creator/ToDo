@@ -16,6 +16,8 @@ AUTH_USER_MODEL = "app.User"
 
 INSTALLED_APPS = [
     'django.contrib.admin',
+    'daphne',
+    "channels",
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -26,6 +28,7 @@ INSTALLED_APPS = [
     "app",
     'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
+    "WS",
     "corsheaders",
 ]
 
@@ -143,6 +146,17 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
-CELERY_TIMEZONE = 'Europe/Moscow'  # или ваша
+CELERY_TIMEZONE = 'Europe/Moscow'
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
+
+ASGI_APPLICATION = "problems.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
