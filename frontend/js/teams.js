@@ -189,6 +189,17 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
     const container = document.getElementById(`team-content-area-${teamId}`);
     if (!container) return;
 
+    // 1. Кнопка чата для владельца
+    const ownerChatBtn = owner.id !== currentUserId ? `
+        <button onclick="openChatWithUser(${owner.id}, '${owner.username.replace(/'/g, "\\'")}')"
+                class="p-2 text-amber-600 hover:bg-amber-100 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                title="Написать владельцу">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+        </button>
+    ` : '';
+
     const ownerHtml = `
         <div class="p-6 rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 shadow-sm mb-4 relative overflow-hidden group">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 relative">
@@ -204,35 +215,37 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
                         <p class="font-black text-slate-800 text-xl">${owner.username} ${owner.id === currentUserId ? '<span class="text-amber-500 ml-1">(Вы)</span>' : ''}</p>
                     </div>
                 </div>
-                ${isOwnerMe ? `
-                    <button onclick="openTeamModal(${teamId}, '${teamName.replace(/'/g, "\\'")}')"
-                            class="bg-white border border-amber-200 text-amber-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-100 transition shadow-sm">
-                        Настройки команды
-                    </button>
-                ` : ''}
+                <div class="flex items-center gap-2">
+                    ${ownerChatBtn}
+                    ${isOwnerMe ? `
+                        <button onclick="openTeamModal(${teamId}, '${teamName.replace(/'/g, "\\'")}')"
+                                class="bg-white border border-amber-200 text-amber-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-amber-100 transition shadow-sm">
+                            Настройки команды
+                        </button>
+                    ` : ''}
+                </div>
             </div>
         </div>
     `;
 
-    const inviteHtml = isOwnerMe ? `
-        <div class="p-1 mb-6">
-            <div class="flex flex-col md:flex-row gap-2">
-                <input type="text" id="invite-public-id-${teamId}"
-                       placeholder="Введите Dynamic ID"
-                       class="flex-1 p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono uppercase tracking-widest">
-                <button onclick="inviteMember(${teamId})"
-                        class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-black transition shadow-sm">
-                    Пригласить
-                </button>
-            </div>
-        </div>
-    ` : '';
+    const inviteHtml = isOwnerMe ? ` ` : ' '; // (оставь как было)
 
     const otherMembers = members.filter(m => m.user.id !== owner.id);
     const membersHtml = `
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             ${otherMembers.map(m => {
-                const isMe = m.user.id === currentUserId; //
+                const isMe = m.user.id === currentUserId;
+                // Кнопка чата для сокомандников
+                const memberChatBtn = !isMe ? `
+                    <button onclick="openChatWithUser(${m.user.id}, '${m.user.username.replace(/'/g, "\\'")}')"
+                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                            title="Написать">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                    </button>
+                    ` : '';
+
                 return `
                     <div class="relative p-5 rounded-2xl border ${isMe ? 'border-indigo-500 bg-indigo-50/30 ring-2 ring-indigo-100' : 'border-slate-100 bg-white'} flex items-center justify-between gap-4 group">
                         <div class="flex items-center gap-4">
@@ -246,15 +259,18 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
                             </div>
                         </div>
 
-                        ${isOwnerMe && !isMe ? `
-                            <button onclick="removeMember(${teamId}, ${m.user.id}, '${m.user.username}', '${teamName.replace(/'/g, "\\'")}')"
-                                    class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                    title="Удалить участника">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        ` : ''}
+                        <div class="flex items-center gap-1">
+                            ${memberChatBtn}
+                            ${isOwnerMe && !isMe ? `
+                                <button onclick="removeMember(${teamId}, ${m.user.id}, '${m.user.username}', '${teamName.replace(/'/g, "\\'")}')"
+                                        class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                        title="Удалить участника">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>`;
             }).join('')}
         </div>

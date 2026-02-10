@@ -60,6 +60,28 @@
         </div>
     </div>
 
+    <div id="chat-popup" class="fixed bottom-6 right-6 w-80 h-[450px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col z-[1000] hidden transition-all duration-300">
+        <div class="p-4 bg-indigo-600 text-white rounded-t-3xl flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div id="chat-avatar" class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center font-bold text-xs uppercase">?</div>
+                <span id="chat-target-name" class="font-bold text-sm">Чат</span>
+            </div>
+            <button onclick="closeChat()" class="hover:bg-indigo-500 p-1 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50"></div>
+        <div class="p-4 bg-white border-t border-slate-100 rounded-b-3xl">
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Ваше сообщение..."
+                       class="flex-1 bg-slate-100 border-none rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <button id="chat-send-btn" class="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
 
     <main id="app-content" class="pt-24 min-h-screen">
@@ -75,6 +97,7 @@
     <script src="js/dashboard.js"></script>
     <script src="js/router.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/script.js"></script>
 
 </body>
 </html>

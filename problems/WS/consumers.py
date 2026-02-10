@@ -26,6 +26,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        history = await self.get_messages_history()
+        await self.send(text_data=json.dumps({
+            "type": "chat_history",
+            "messages": history
+        }))
+
+    @sync_to_async
+    def get_messages_history(self):
+        messages = Message.objects.filter(room_id=self.room_id).order_by('created_at')
+        return [{
+            "sender": m.sender.username,
+            "message": m.text,
+            "created_at": m.created_at.isoformat()
+        } for m in messages]
+
     @sync_to_async
     def get_room_data(self):
         # Логика определения ID (с поддержкой анонимов для тестов)

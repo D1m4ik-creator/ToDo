@@ -32,7 +32,18 @@ class TeamMemberAdmin(admin.ModelAdmin):
         return "✓ Принято" if obj.is_accepted else "⏳ Ожидание"
     get_status.short_description = "Статус приглашения"
 
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'type', 'is_read', 'created_at')
+    list_filter = ('type', 'is_read')
+    search_fields = ('user__username', )
+    readonly_fields = ('created_at',)
+
+    def get_status(self, obj):
+        return "✓ Прочитано" if obj.is_read else "⏳ Ожидание"
+    get_status.short_description = "Статус приглашения"
+
 admin.site.register(User)
 admin.site.register(Projects)
 admin.site.register(Task)
-admin.site.register(Notification)
