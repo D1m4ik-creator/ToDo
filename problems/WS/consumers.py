@@ -36,6 +36,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def get_messages_history(self):
         messages = Message.objects.filter(room_id=self.room_id).order_by('created_at')
         return [{
+            "id": m.id,
             "sender": m.sender.username,
             "message": m.text,
             "created_at": m.created_at.isoformat()
@@ -57,19 +58,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # Получение сообщений
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message_text = data["message"]
+        action = data.get("action")
 
-        message = await self.save_message(message_text)
+        if action == "delete":
+            message_id = data.get("message_id")
+            if await self.delete_message_from_db(message_id):
+                await self.channel_layer.group_send(
+                    self.room_name,
+                    {
+                        "type": "chat_message_deleted",
+                        "message_id": message_id
+                    }
+                )
 
-        await self.channel_layer.group_send(
-            self.room_name,
-            {
-                "type": "chat_message",
-                "message": message.text,
-                "sender": self.user.username if self.user.is_authenticated else "Аноним",
-                "created_at": message.created_at.isoformat(),
-            }
-        )
+        else:
+            message_text = data["message"]
+            message = await self.save_message(message_text)
+            await self.channel_layer.group_send(
+                self.room_name,
+                {
+                    "type": "chat_message",
+                    "message": message.text,
+                    "sender": self.user.username if self.user.is_authenticated else "Аноним",
+                    "created_at": message.created_at.isoformat(),
+                }
+            )
 
     # Отправка сообщения клиентам
     async def chat_message(self, event):
@@ -110,3 +123,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sender=self.user,
             text=text
         )
+
+    @sync_to_async
+    def delete_message_from_db(self, message_id):
+        try:
+            # Удаляем только если отправитель — текущий пользователь
+            msg = Message.objects.get(id=message_id, sender=self.user)
+            msg.delete()
+            return True
+        except Message.DoesNotExist:
+            return False
+
+    # Обработчик события удаления для группы
+    async def chat_message_deleted(self, event):
+        await self.send(text_data=json.dumps(event))
