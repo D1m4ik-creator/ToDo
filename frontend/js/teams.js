@@ -228,7 +228,23 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
         </div>
     `;
 
-    const inviteHtml = isOwnerMe ? ` ` : ' '; // (оставь как было)
+    const inviteHtml = isOwnerMe ? `
+        <div class="p-6 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 mb-8 mt-2">
+            <p class="text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Пригласить участника</p>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="invite-public-id-${teamId}"
+                       placeholder="Введите ID пользователя (например: TASK-F16EE30B)"
+                       class="flex-1 px-5 py-3 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-bold transition-all uppercase">
+                <button onclick="inviteMember(${teamId})"
+                        class="bg-slate-800 text-white px-8 py-3 rounded-2xl font-bold text-sm hover:bg-slate-900 transition shadow-lg shadow-slate-200 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Добавить
+                </button>
+            </div>
+        </div>
+    ` : '';
 
     const otherMembers = members.filter(m => m.user.id !== owner.id);
     const membersHtml = `

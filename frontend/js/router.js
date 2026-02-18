@@ -10,7 +10,7 @@ async function showPage(page) {
                 <h1 class="text-6xl font-extrabold mb-6"><span class="gradient-text">Управляй проектами</span> по-умному</h1>
                 <p class="text-xl text-slate-500 mb-10">Профессиональный таск-менеджер с AI-ассистентом.</p>
                 <div class="flex justify-center gap-4">
-                    <button onclick="showPage('register')" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition">Создать проект</button>
+                    <button onclick="showPage('dashboard')" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 transition">Создать проект</button>
                 </div>
             </div>`;
     }

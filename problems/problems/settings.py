@@ -69,7 +69,7 @@ DATABASES = {
         "NAME": "tododb",
         "USER": "postgres",
         "PASSWORD": "L7062006v.",
-        "HOST": "127.0.0.1",
+        "HOST": "db",
         "PORT": "5432",
         'OPTIONS': {
             'client_encoding': 'UTF8',
@@ -133,7 +133,7 @@ SPECTACULAR_SETTINGS = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # номер базы Redis (1)
+        "LOCATION": "redis://redis:6379/1",  # номер базы Redis (1)
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -156,7 +156,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [("redis", 6379)],
         },
     },
 }
