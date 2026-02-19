@@ -39,7 +39,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         validated_data.pop("password_confirm")
 
         user = User.objects.create_user(
-            username=validated_data['username'],
+            username=validated_data.get('username') or validated_data.get('email'),
             email=validated_data.get('email'),
             password=validated_data['password'],
         )
@@ -57,11 +57,13 @@ class TeamMemberCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         team = self.context.get('team')
         invitee = validated_data.get('invitee')
-        team_member, created = TeamMember.objects.update_or_create(
+        team_member, _created = TeamMember.objects.update_or_create(
             user=invitee,
             team=team,
-            role=TeamMember.Roler.MEMBER,
-            is_accepted=False
+            defaults={
+                "role": TeamMember.Roler.MEMBER,
+                "is_accepted": False,
+            },
         )
         return team_member
 
@@ -123,7 +125,7 @@ class TeamSerializers(serializers.ModelSerializer):
 
 
 class ProjectsSerializers(serializers.ModelSerializer):
-    task_count = serializers.IntegerField(source="task.count", read_only=True)
+    task_count = serializers.IntegerField(source="tasks.count", read_only=True)
 
     class Meta:
         model = Projects
@@ -154,3 +156,39 @@ class NotificationsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ["id", "type","payload", "is_read","created_at"]
+
+
+class ApiErrorSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    code = serializers.CharField(required=False, allow_blank=True)
+
+
+class ValidationErrorSerializer(serializers.Serializer):
+    errors = serializers.DictField(
+        child=serializers.ListField(child=serializers.CharField())
+    )
+
+
+class InviteByDynamicIdResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+class TaskMoveRequestSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Task.Status.choices)
+
+
+class TaskMoveResponseSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Task.Status.choices)
+
+
+class TaskSendToReviewResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    status = serializers.ChoiceField(choices=Task.Status.choices)
+
+
+class NotificationReadResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class TeamInviteActionResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()

@@ -32,8 +32,7 @@ urlpatterns = [
     path("api/auth/me/", MeView.as_view(), name="me"),
 
     # Приглашение или отклонение в команду
-    path("api/team-invites/<int:team_id>/<str:action>/", TeamInviteActionView.as_view(), name='team-invite-accept'),
-    path("api/team-invites/<int:team_id>/<str:action>/", TeamInviteActionView.as_view(), name='team-invite-decline'),
+    path("api/team-invites/<int:team_id>/<str:action>/", TeamInviteActionView.as_view(), name='team-invite-action'),
 
     # Чтение уведомления
     # Документация

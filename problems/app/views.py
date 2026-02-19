@@ -7,15 +7,21 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 from django.contrib.auth import authenticate
+from django.shortcuts import get_object_or_404
 
 from .services.team_service import create_member, delete_member, TeamInviteService
 from .services.auth_service import logout_user, GoogleAuthService
 from .services.task_service import move_task, send_task_to_review
 from .serializers import *
 from .service import get_or_create_dynamic_id
-from .models import Team, TeamMember, Projects, Task
+from .models import Notification, Team, TeamMember, Projects, Task
 
 
 class MeView(APIView):
@@ -169,7 +175,15 @@ class TeamViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         create_member(self , serializer)
 
-    @extend_schema(request=TeamMemberCreateSerializer, responses={201: None})
+    @extend_schema(
+        summary="Пригласить участника по dynamic ID",
+        request=TeamMemberCreateSerializer,
+        responses={
+            201: InviteByDynamicIdResponseSerializer,
+            400: ValidationErrorSerializer,
+            403: ApiErrorSerializer,
+        },
+    )
     @action(detail=True, methods=["post"], url_path='invite-by-dynamic-id')
     def invite_by_dynamic_id(self, request, pk=None):
         team = self.get_object()
@@ -178,8 +192,8 @@ class TeamViewSet(viewsets.ModelViewSet):
             data=request.data,
             context={'team': team, 'request': request}
         )
-        if serializer.is_valid():
-            invitee = serializer.validated_data['invitee']
+        serializer.is_valid(raise_exception=True)
+        invitee = serializer.validated_data['invitee']
 
         from .tasks import send_team_invite_notification
         send_team_invite_notification(
@@ -192,7 +206,10 @@ class TeamViewSet(viewsets.ModelViewSet):
 
         # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @extend_schema(request=TeamMemberSerializer, responses={201: None})
+    @extend_schema(
+        summary="Список участников команды",
+        responses={200: TeamMemberSerializer(many=True)},
+    )
     @action(detail=True, methods=["get"], url_path="members")
     def members(self, request, pk=None):
         team = self.get_object()
@@ -200,16 +217,30 @@ class TeamViewSet(viewsets.ModelViewSet):
         serializer = TeamMemberSerializer(members, many=True)
         return Response(serializer.data)
 
-    @extend_schema(responses={204: None})
+    @extend_schema(
+        summary="Удалить участника команды",
+        request=None,
+        responses={
+            204: OpenApiResponse(description="Участник удален"),
+            400: ValidationErrorSerializer,
+            403: ApiErrorSerializer,
+            404: ApiErrorSerializer,
+        },
+    )
     @action(detail=True, methods=["delete"], url_path='remove-member')
     def remove_member(self, request, pk=None):
-        try:
-            member = delete_member(self, request)
-        except TeamMember.DoesNotExist as e:
-            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        delete_member(self, request)
         return Response({"detail": "Член команды спешно удалён"}, status=status.HTTP_204_NO_CONTENT)
 
-    @extend_schema(request=ProjectsSerializers, responses={201: None})
+    @extend_schema(
+        summary="Список или создание проектов команды",
+        request=ProjectsSerializers,
+        responses={
+            200: ProjectsSerializers(many=True),
+            201: ProjectsSerializers,
+            400: ValidationErrorSerializer,
+        },
+    )
     @action(detail=True, methods=["get", "post"], url_path="projects")
     def projects(self, requests, pk=None):
         team = self.get_object()
@@ -244,6 +275,14 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save()
 
+    @extend_schema(
+        summary="Отправить задачу на проверку",
+        request=None,
+        responses={
+            200: TaskSendToReviewResponseSerializer,
+            400: ApiErrorSerializer,
+        },
+    )
     @action(detail=True, methods=["post"], url_path="send-to-review")
     def send_to_review(self, request, pk=None):
         task = self.get_object()
@@ -255,6 +294,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        summary="Переместить задачу в новый статус",
+        request=TaskMoveRequestSerializer,
+        responses={
+            200: TaskMoveResponseSerializer,
+            400: ApiErrorSerializer,
+        },
+    )
     @action(detail=True, methods=["patch"], url_path="move")
     def move_task(self, request, pk=None):
         task = self.get_object()
@@ -283,25 +330,68 @@ class NotificationsViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user)
 
+    @extend_schema(
+        summary="Получить непрочитанные уведомления",
+        responses={200: NotificationsSerializer(many=True)},
+    )
     @action(detail=False, methods=["get"], url_path="unread")
     def unread(self, request):
         qs = self.get_queryset().filter(is_read=False)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Отметить уведомление прочитанным",
+        request=None,
+        responses={200: NotificationReadResponseSerializer},
+    )
     @action(detail=True, methods=["post"], url_path="read")
     def mark_read(self, request, pk=None):
         notification = self.get_object()
         notification.is_read = True
         notification.save(update_fields=["is_read"])
-        return Response({"statis": "ok"})
+        return Response({"status": "ok"})
 
 
 class TeamInviteActionView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Принять или отклонить приглашение в команду",
+        parameters=[
+            OpenApiParameter(
+                name="team_id",
+                type=int,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="ID команды",
+            ),
+            OpenApiParameter(
+                name="action",
+                type=str,
+                location=OpenApiParameter.PATH,
+                required=True,
+                enum=["accept", "decline"],
+                description="Действие над приглашением",
+            ),
+        ],
+        request=None,
+        responses={
+            200: TeamInviteActionResponseSerializer,
+            400: ApiErrorSerializer,
+            404: ApiErrorSerializer,
+            409: ApiErrorSerializer,
+        },
+        examples=[
+            OpenApiExample(
+                "Accept invite",
+                value={"status": "ok"},
+                response_only=True,
+            )
+        ],
+    )
     def post(self, request, team_id, action):
-        team = Team.objects.get(id=team_id)
+        team = get_object_or_404(Team, id=team_id)
         if action == "accept":
             TeamInviteService.accept(
                 user=request.user,
