@@ -2,30 +2,6 @@
  * GLOBAL STATE
  **************************************************/
 let currentProjectId = null;
-const token = () => localStorage.getItem('access');
-
-
-/**************************************************
- * API HELPER
- **************************************************/
-async function apiFetch(url, options = {}) {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token()}`,
-            ...(options.headers || {})
-        }
-    });
-
-    if (response.status === 401) {
-        localStorage.clear();
-        window.location.href = 'login.html';
-        throw new Error('Unauthorized');
-    }
-
-    return response;
-}
 
 
 /**************************************************
@@ -45,8 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initBoard() {
-    await loadProject();
-    await loadTasks();
+    try {
+        await loadProject();
+        await loadTasks();
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Не удалось загрузить проект"), "error");
+    }
 }
 
 function initGlobalEvents() {
@@ -103,8 +83,7 @@ function initGlobalEvents() {
  * PROJECT + TEAM
  **************************************************/
 async function loadProject() {
-    const res = await apiFetch(`${API_URL}/projects/${currentProjectId}/`);
-    const project = await res.json();
+    const project = await apiClient.get(`/projects/${currentProjectId}/`);
 
     document.getElementById('project-name').innerText = project.name;
 
@@ -115,8 +94,7 @@ async function loadProject() {
 }
 
 async function loadTeamMembers(teamId) {
-    const res = await apiFetch(`${API_URL}/teams/${teamId}/members/`);
-    const members = await res.json();
+    const members = await apiClient.get(`/teams/${teamId}/members/`);
 
     const select = document.getElementById('edit-assignee');
     const header = document.getElementById('project-members-list');
@@ -147,16 +125,20 @@ async function loadTeamMembers(teamId) {
  * TASKS
  **************************************************/
 async function loadTasks() {
-    const res = await apiFetch(`${API_URL}/tasks/?project_id=${currentProjectId}`);
-    const tasks = await res.json();
+    const tasks = await apiClient.get(`/tasks/?project_id=${currentProjectId}`);
 
     const counters = { todo: 0, progress: 0, review: 0, done: 0 };
 
     Object.keys(counters).forEach(status => {
         const col = document.getElementById(`col-${status}`);
-        if(col) col.innerHTML = '';
+        if (col) col.innerHTML = renderLoader("Загрузка...");
         const count = document.getElementById(`count-${status}`);
-        if(count) count.innerText = '0';
+        if (count) count.innerText = '0';
+    });
+
+    Object.keys(counters).forEach(status => {
+        const col = document.getElementById(`col-${status}`);
+        if (col) col.innerHTML = '';
     });
 
     tasks.forEach(task => {
@@ -169,8 +151,15 @@ async function loadTasks() {
 
     Object.keys(counters).forEach(s => {
         const el = document.getElementById(`count-${s}`);
-        if(el) el.innerText = counters[s];
+        if (el) el.innerText = counters[s];
     });
+
+    if (tasks.length === 0) {
+        const todoCol = document.getElementById("col-todo");
+        if (todoCol) {
+            todoCol.innerHTML = renderEmptyState("В проекте пока нет задач");
+        }
+    }
 }
 
 function renderTask(task) {
@@ -217,10 +206,11 @@ async function onDrop(ev, status) {
     ev.preventDefault();
     const id = ev.dataTransfer.getData("taskId");
 
-    await apiFetch(`${API_URL}/tasks/${id}/move/`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-    });
+    try {
+        await apiClient.patch(`/tasks/${id}/move/`, { status });
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Не удалось переместить задачу"), "error");
+    }
 
     loadTasks();
 }
@@ -281,10 +271,7 @@ async function quickCreate(status) {
     };
 
     try {
-        await apiFetch(`${API_URL}/tasks/`, {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
+        await apiClient.post(`/tasks/`, payload);
 
         input.value = '';
         // Скрываем форму, восстанавливаем кнопку
@@ -293,8 +280,7 @@ async function quickCreate(status) {
 
         loadTasks();
     } catch (e) {
-        console.error(e);
-        alert('Ошибка при создании задачи');
+        showToast(getApiErrorMessage(e, 'Ошибка при создании задачи'), "error");
     }
 }
 
@@ -311,8 +297,7 @@ function openCreateTask() {
 }
 
 async function openEdit(id) {
-    const res = await apiFetch(`${API_URL}/tasks/${id}/`);
-    const task = await res.json();
+    const task = await apiClient.get(`/tasks/${id}/`);
 
     document.getElementById('edit-task-id').value = task.id;
     document.getElementById('edit-title').value = task.title;
@@ -348,25 +333,30 @@ async function saveTask() {
         return;
     }
 
-    await apiFetch(
-        id ? `${API_URL}/tasks/${id}/` : `${API_URL}/tasks/`,
-        {
-            method: id ? 'PATCH' : 'POST',
-            body: JSON.stringify(payload)
+    try {
+        if (id) {
+            await apiClient.patch(`/tasks/${id}/`, payload);
+        } else {
+            await apiClient.post(`/tasks/`, payload);
         }
-    );
-
-    closeModal();
-    loadTasks();
+        closeModal();
+        loadTasks();
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Не удалось сохранить задачу"), "error");
+    }
 }
 
 async function deleteTask() {
     const id = document.getElementById('edit-task-id').value;
     if (!confirm("Удалить задачу?")) return;
 
-    await apiFetch(`${API_URL}/tasks/${id}/`, { method: 'DELETE' });
-    closeModal();
-    loadTasks();
+    try {
+        await apiClient.delete(`/tasks/${id}/`);
+        closeModal();
+        loadTasks();
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Не удалось удалить задачу"), "error");
+    }
 }
 
 

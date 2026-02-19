@@ -21,30 +21,15 @@ const Notifications = {
         setInterval(() => this.loadUnread(), 30000);
     },
 
-    // Вспомогательный метод для заголовков
-    getHeaders() {
-        return {
-            'Authorization': `Bearer ${localStorage.getItem('access')}`,
-            'Content-Type': 'application/json'
-        };
-    },
-
     async loadUnread() {
         try {
-            // Используем API_URL из твоего config.js
-            const response = await fetch(`${API_URL}/notifications/unread/`, {
-                method: 'GET',
-                headers: this.getHeaders()
-            });
-
-            if (response.ok) {
-                this.items = await response.json();
-                this.updateUI();
-            } else if (response.status === 401) {
-                // Если токен протух, скрываем кнопку
-                document.getElementById('notifButton').classList.add('hidden');
-            }
+            this.items = await apiClient.get("/notifications/unread/");
+            this.updateUI();
         } catch (err) {
+            if (err?.status === 401) {
+                document.getElementById('notifButton')?.classList.add('hidden');
+                return;
+            }
             console.error("Ошибка загрузки уведомлений:", err);
         }
     },
@@ -137,40 +122,34 @@ const Notifications = {
 
     async handleInvite(inviteId, action, notifId) { // Переименовали для ясности
         try {
-            // Теперь URL будет правильным: /api/team-invites/42/accept/
-            const response = await fetch(`${API_URL}/team-invites/${inviteId}/${action}/`, {
-                method: 'POST',
-                headers: this.getHeaders()
-            });
+            await apiClient.post(`/team-invites/${inviteId}/${action}/`);
+            await this.markAsRead(notifId);
 
-            if (response.ok) {
-                await this.markAsRead(notifId);
-                if (typeof showToast === 'function')
-                    showToast(action === 'accept' ? "Вы вступили в команду" : "Приглашение отклонено", "success");
+            if (typeof showToast === 'function') {
+                showToast(action === 'accept' ? "Вы вступили в команду" : "Приглашение отклонено", "success");
+            }
 
-                if (action === 'accept') {
-                    // Небольшая задержка перед релоадом, чтобы пользователь успел увидеть тост
-                    setTimeout(() => location.reload(), 1000);
-                }
-            } else {
-                const data = await response.json();
-                if (typeof showToast === 'function') showToast(data.detail || "Ошибка", "error");
+            if (action === 'accept') {
+                setTimeout(() => {
+                    if (typeof showPage === "function") {
+                        showPage("dashboard");
+                    } else {
+                        location.reload();
+                    }
+                }, 500);
             }
         } catch (err) {
-            console.error("Действие не удалось", err);
+            if (typeof showToast === 'function') {
+                showToast(getApiErrorMessage(err, "Не удалось выполнить действие"), "error");
+            }
         }
     },
 
     async markAsRead(id) {
         try {
-            const response = await fetch(`${API_URL}/notifications/${id}/read/`, {
-                method: 'POST',
-                headers: this.getHeaders()
-            });
-            if (response.ok) {
-                this.items = this.items.filter(item => item.id !== id);
-                this.updateUI();
-            }
+            await apiClient.post(`/notifications/${id}/read/`);
+            this.items = this.items.filter(item => item.id !== id);
+            this.updateUI();
         } catch (err) {
             console.error("Не удалось пометить уведомление", err);
         }

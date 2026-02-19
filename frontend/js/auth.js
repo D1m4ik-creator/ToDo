@@ -1,19 +1,14 @@
-const GOOGLE_CLIENT_ID = "219724419452-gvnuibp42kbe3ts4gs0vdt2nesql45rq.apps.googleusercontent.com"
 // Получение профиля
 async function fetchProfile() {
-    const token = localStorage.getItem('access');
-    if (!token) {
+    if (!localStorage.getItem("access")) {
         showPage('login');
         return null;
     }
+
     try {
-        const response = await fetch(`${API_URL}/auth/me/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) return await response.json();
-        throw new Error("Сессия истекла");
+        return await apiClient.get("/auth/me/");
     } catch (err) {
-        handleLogout();
+        showToast(getApiErrorMessage(err, "Не удалось получить профиль"), "error");
         return null;
     }
 }
@@ -26,26 +21,14 @@ async function handleAuth(event, type) {
     const endpoint = type === 'register' ? '/register/' : '/login/';
 
     try {
-        const response = await fetch(API_URL + endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            localStorage.setItem('access', result.tokens.access);
-            localStorage.setItem('refresh', result.tokens.refresh);
-            localStorage.setItem('user', JSON.stringify(result.user));
-            showPage('dashboard');
-            updateNav();
-        } else {
-            showToast("Ошибка авторизации", "error");
-            console.error(result);
-        }
+        const result = await apiClient.post(endpoint, data, { auth: false, retries: 0 });
+        localStorage.setItem('access', result.tokens.access);
+        localStorage.setItem('refresh', result.tokens.refresh);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        showPage('dashboard');
+        updateNav();
     } catch (err) {
-        showToast("Нет связи с сервером", "error");
+        showToast(getApiErrorMessage(err, "Ошибка авторизации"), "error");
     }
 }
 
@@ -102,31 +85,20 @@ function renderForm(title, type) {
 async function handleGoogleCallback(response) {
     // response.credential - это JWT токен, который дал Google
     try {
-        const backendResponse = await fetch(`${API_URL}/auth/google/callback/`, { // Твой новый эндпоинт
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ token: response.credential }) // Бэк ждет поле "token"
-        });
+        const result = await apiClient.post(
+            "/auth/google/callback/",
+            { token: response.credential },
+            { auth: false, retries: 0 }
+        );
+        localStorage.setItem('access', result.tokens.access);
+        localStorage.setItem('refresh', result.tokens.refresh);
+        localStorage.setItem('user', JSON.stringify(result.user));
 
-        const result = await backendResponse.json();
-
-        if (backendResponse.ok) {
-            // Сохраняем токены так же, как при обычном входе
-            localStorage.setItem('access', result.tokens.access);
-            localStorage.setItem('refresh', result.tokens.refresh);
-            localStorage.setItem('user', JSON.stringify(result.user));
-
-            showToast("Вход выполнен успешно!", "success");
-            showPage('dashboard');
-            updateNav();
-        } else {
-            showToast(result.detail || "Ошибка входа через Google", "error");
-        }
+        showToast("Вход выполнен успешно!", "success");
+        showPage('dashboard');
+        updateNav();
     } catch (err) {
-        console.error(err);
-        showToast("Ошибка соединения с сервером", "error");
+        showToast(getApiErrorMessage(err, "Ошибка входа через Google"), "error");
     }
 }
 

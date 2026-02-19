@@ -1,10 +1,28 @@
-async function showPage(page) {
+const SPA_PAGES = new Set(['home', 'login', 'register', 'dashboard']);
+
+function getPageFromHash() {
+    const hash = window.location.hash.replace('#', '').trim();
+    if (!hash || !SPA_PAGES.has(hash)) return null;
+    return hash;
+}
+
+async function showPage(page, options = {}) {
+    const syncHash = options.syncHash !== false;
+    const safePage = SPA_PAGES.has(page) ? page : 'home';
+
+    if (syncHash) {
+        const nextHash = safePage === 'home' ? '' : `#${safePage}`;
+        if (window.location.hash !== nextHash) {
+            window.location.hash = nextHash;
+        }
+    }
+
     const content = document.getElementById('app-content');
     content.className = "pt-24 min-h-screen fade-in px-4";
 
     if (window.timerInterval) clearInterval(window.timerInterval);
 
-    if (page === 'home') {
+    if (safePage === 'home') {
         content.innerHTML = `
             <div class="max-w-4xl mx-auto text-center px-4">
                 <h1 class="text-6xl font-extrabold mb-6"><span class="gradient-text">Управляй проектами</span> по-умному</h1>
@@ -14,9 +32,10 @@ async function showPage(page) {
                 </div>
             </div>`;
     }
-    else if (page === 'login') content.innerHTML = renderForm('Вход', 'login');
-    else if (page === 'register') content.innerHTML = renderForm('Регистрация', 'register');
-    else if (page === 'dashboard') {
+    else if (safePage === 'login') content.innerHTML = renderForm('Вход', 'login');
+    else if (safePage === 'register') content.innerHTML = renderForm('Регистрация', 'register');
+    else if (safePage === 'dashboard') {
+        content.innerHTML = renderLoader("Загружаем рабочее пространство...");
         const user = await fetchProfile();
         if (user) {
             renderDashboard(user);

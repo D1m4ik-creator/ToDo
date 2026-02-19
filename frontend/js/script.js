@@ -6,6 +6,12 @@ let lastMessageDate = null;
  */
 window.openChatWithUser = function(userId, username) {
     const token = localStorage.getItem('access');
+    if (!token) {
+        showToast("Сессия истекла, войдите снова", "error");
+        redirectToLogin();
+        return;
+    }
+
     const popup = document.getElementById('chat-popup');
     const messagesDiv = document.getElementById('chat-messages');
 
@@ -17,7 +23,8 @@ window.openChatWithUser = function(userId, username) {
     messagesDiv.innerHTML = '<div class="text-center py-10 opacity-50 text-[10px] font-black uppercase tracking-widest">Загрузка истории...</div>';
     popup.classList.remove('hidden');
 
-    chatSocket = new WebSocket(`ws://127.0.0.1:8000/ws/chat/${userId}/?token=${token}`);
+    const wsEndpoint = `${WS_URL}/ws/chat/${userId}/?token=${encodeURIComponent(token)}`;
+    chatSocket = new WebSocket(wsEndpoint);
 
     chatSocket.onmessage = (e) => {
         const data = JSON.parse(e.data);
@@ -42,6 +49,10 @@ window.openChatWithUser = function(userId, username) {
         else if (data.type === 'chat_message') {
             appendMessageUI(data);
         }
+    };
+
+    chatSocket.onerror = () => {
+        showToast("Не удалось подключиться к чату", "error");
     };
 
     // Логика отправки

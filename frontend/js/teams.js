@@ -1,17 +1,8 @@
-/**
- * Вспомогательная функция для проверки авторизации
- */
-function getAuthHeaders() {
-    const token = localStorage.getItem('access');
-    if (!token) {
-        showToast("Сессия истекла, войдите снова", "error");
-        window.location.href = "/login.html";
-        return null;
-    }
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-    };
+function ensureSession() {
+    if (localStorage.getItem("access")) return true;
+    showToast("Сессия истекла, войдите снова", "error");
+    redirectToLogin();
+    return false;
 }
 
 /**
@@ -40,18 +31,14 @@ function renderTeamsTab(container) {
  */
 async function loadTeamsData() {
     const listContainer = document.getElementById('teams-list-scroll');
-    const headers = getAuthHeaders();
-    if (!headers || !listContainer) return;
+    if (!listContainer || !ensureSession()) return;
+    listContainer.innerHTML = renderLoader("Загружаем команды...");
 
     try {
-        const response = await fetch(`${API_URL}/teams/`, { headers });
-        const teams = await response.json();
+        const teams = await apiClient.get("/teams/");
 
         if (teams.length === 0) {
-            listContainer.innerHTML = `
-                <div class="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                    <p class="text-slate-400 italic text-sm">У вас еще нет команд</p>
-                </div>`;
+            listContainer.innerHTML = renderEmptyState("У вас еще нет команд");
             return;
         }
 
@@ -82,7 +69,8 @@ async function loadTeamsData() {
             </div>
         `).join('');
     } catch (err) {
-        showToast("Не удалось загрузить список команд", "error");
+        showToast(getApiErrorMessage(err, "Не удалось загрузить список команд"), "error");
+        listContainer.innerHTML = renderEmptyState("Не удалось загрузить список команд");
     }
 }
 
@@ -111,22 +99,16 @@ async function toggleTeamAccordion(element, teamId, teamName) {
  */
 async function loadTeamMembers(teamId, teamName, gridId) {
     const grid = document.getElementById(gridId);
-    const headers = getAuthHeaders();
     const userStr = localStorage.getItem('user');
     
-    if (!headers || !userStr) return;
+    if (!ensureSession() || !userStr || !grid) return;
     const currentUser = JSON.parse(userStr);
 
     try {
-        const [teamRes, membersRes] = await Promise.all([
-            fetch(`${API_URL}/teams/${teamId}/`, { headers }),
-            fetch(`${API_URL}/teams/${teamId}/members/`, { headers })
+        const [teamData, members] = await Promise.all([
+            apiClient.get(`/teams/${teamId}/`),
+            apiClient.get(`/teams/${teamId}/members/`)
         ]);
-
-        if (!teamRes.ok || !membersRes.ok) throw new Error("Ошибка API");
-
-        const teamData = await teamRes.json();
-        const members = await membersRes.json();
         const isOwnerMe = teamData.owner.id === currentUser.id;
 
         // Рисуем скелет вкладок
@@ -150,35 +132,19 @@ async function loadTeamMembers(teamId, teamName, gridId) {
 
         renderMembersInside(teamId, teamName, teamData.owner, members, isOwnerMe, currentUser.id);
     } catch (err) {
-        grid.innerHTML = `<p class="col-span-3 text-center text-red-500 py-4">Ошибка загрузки данных</p>`;
+        grid.innerHTML = `<p class="col-span-3 text-center text-red-500 py-4">${getApiErrorMessage(err, "Ошибка загрузки данных")}</p>`;
     }
 }
 
 async function removeMember(teamId, userId, username, teamName) {
     if (!confirm(`Вы уверены, что хотите удалить пользователя ${username} из команды?`)) return;
 
-    const token = localStorage.getItem('access'); //
-
     try {
-        const response = await fetch(`${API_URL}/teams/${teamId}/remove-member/`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ user_id: userId }) // Бэк обычно ожидает ID удаляемого пользователя
-        });
-
-        if (response.ok) {
-            showToast(`Пользователь ${username} удален`, "success");
-            // Обновляем список участников в текущем интерфейсе
-            loadTeamMembers(teamId, teamName, `members-grid-${teamId}`);
-        } else {
-            const data = await response.json();
-            showToast(data.detail || "Ошибка при удалении", "error");
-        }
+        await apiClient.delete(`/teams/${teamId}/remove-member/`, { user_id: userId });
+        showToast(`Пользователь ${username} удален`, "success");
+        loadTeamMembers(teamId, teamName, `members-grid-${teamId}`);
     } catch (err) {
-        showToast("Ошибка соединения с сервером", "error");
+        showToast(getApiErrorMessage(err, "Ошибка при удалении"), "error");
     }
 }
 
@@ -300,29 +266,18 @@ function renderMembersInside(teamId, teamName, owner, members, isOwnerMe, curren
  */
 async function inviteMember(teamId) {
     const input = document.getElementById(`invite-public-id-${teamId}`);
-    const headers = getAuthHeaders();
-    if (!input || !headers) return;
+    if (!input || !ensureSession()) return;
 
     const code = input.value.trim().toUpperCase();
     if (!code) return showToast("Введите ID пользователя", "error");
 
     try {
-        const response = await fetch(`${API_URL}/teams/${teamId}/invite-by-dynamic-id/`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ dynamic_id: code })
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-            showToast("Участник добавлен!", "success");
-            input.value = "";
-            loadTeamMembers(teamId, "", `members-grid-${teamId}`);
-        } else {
-            showToast(data.detail || data.dynamic_id?.[0] || "Ошибка", "error");
-        }
+        await apiClient.post(`/teams/${teamId}/invite-by-dynamic-id/`, { dynamic_id: code });
+        showToast("Приглашение отправлено!", "success");
+        input.value = "";
+        loadTeamMembers(teamId, "", `members-grid-${teamId}`);
     } catch (err) {
-        showToast("Ошибка сети", "error");
+        showToast(getApiErrorMessage(err, "Ошибка приглашения"), "error");
     }
 }
 
@@ -347,13 +302,13 @@ function openTeamModal(teamId = null, currentName = "") {
         actionBtn.innerText = "Сохранить изменения";
         dangerZone?.classList.remove('hidden');
 
-        actionBtn.onclick = () => handleTeamAction(`${API_URL}/teams/${teamId}/`, 'PATCH', { name: input.value.trim() }, "Обновлено!");
+        actionBtn.onclick = () => handleTeamAction(`/teams/${teamId}/`, 'PATCH', { name: input.value.trim() }, "Обновлено!");
         
         const deleteBtn = document.getElementById('delete-team-btn');
         if (deleteBtn) {
             deleteBtn.onclick = () => {
                 if (confirm("Удалить команду безвозвратно?")) {
-                    handleTeamAction(`${API_URL}/teams/${teamId}/`, 'DELETE', null, "Команда удалена");
+                    handleTeamAction(`/teams/${teamId}/`, 'DELETE', null, "Команда удалена");
                 }
             };
         }
@@ -361,31 +316,26 @@ function openTeamModal(teamId = null, currentName = "") {
         title.innerText = "Новая команда";
         actionBtn.innerText = "Создать";
         dangerZone?.classList.add('hidden');
-        actionBtn.onclick = () => handleTeamAction(`${API_URL}/teams/`, 'POST', { name: input.value.trim() }, "Создано!");
+        actionBtn.onclick = () => handleTeamAction(`/teams/`, 'POST', { name: input.value.trim() }, "Создано!");
     }
 }
 
 async function handleTeamAction(url, method, body, successMsg) {
-    const headers = getAuthHeaders();
-    if (!headers) return;
+    if (!ensureSession()) return;
 
     try {
-        const response = await fetch(url, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : null
-        });
-
-        if (response.ok) {
-            showToast(successMsg, "success");
-            closeTeamSettings();
-            loadTeamsData();
-        } else {
-            const data = await response.json();
-            showToast(data.detail || "Ошибка операции", "error");
+        if (method === "POST") {
+            await apiClient.post(url, body || null);
+        } else if (method === "PATCH") {
+            await apiClient.patch(url, body || null);
+        } else if (method === "DELETE") {
+            await apiClient.delete(url, body || null);
         }
-    } catch {
-        showToast("Ошибка сервера", "error");
+        showToast(successMsg, "success");
+        closeTeamSettings();
+        loadTeamsData();
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Ошибка операции"), "error");
     }
 }
 /**
@@ -393,51 +343,27 @@ async function handleTeamAction(url, method, body, successMsg) {
  */
 async function loadTeamProjects(teamId) {
     const container = document.getElementById(`team-content-area-${teamId}`);
-    const headers = getAuthHeaders();
-    if (!container || !headers) return;
+    if (!container || !ensureSession()) return;
 
-    // Прелоадер
-    container.innerHTML = `
-        <div class="col-span-1 md:col-span-3 py-12 text-center">
-            <div class="inline-block w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-            <p class="text-slate-400 font-bold text-sm">Загружаем проекты...</p>
-        </div>
-    `;
+    container.innerHTML = renderLoader("Загружаем проекты...");
 
     try {
-        const response = await fetch(`${API_URL}/teams/${teamId}/projects/`, { headers });
-        if (!response.ok) throw new Error("Ошибка при загрузке проектов");
-
-        const projects = await response.json();
+        const projects = await apiClient.get(`/teams/${teamId}/projects/`);
         renderProjectsInside(teamId, projects);
     } catch (err) {
-        container.innerHTML = `<p class="text-center text-red-500 py-10 font-bold">Не удалось загрузить проекты</p>`;
+        container.innerHTML = `<p class="text-center text-red-500 py-10 font-bold">${getApiErrorMessage(err, "Не удалось загрузить проекты")}</p>`;
     }
 }
 
 async function deleteProject(teamId, projectId, projectName) {
     if (!confirm(`Вы уверены, что хотите полностью удалить проект "${projectName}"? Все задачи внутри будут стерты.`)) return;
 
-    const token = localStorage.getItem('access'); //
-
     try {
-        const response = await fetch(`${API_URL}/projects/${projectId}/`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}` //
-            }
-        });
-
-        if (response.ok) {
-            showToast("Проект успешно удален", "success");
-            // Обновляем только текущую вкладку проектов
-            loadTeamProjects(teamId); //
-        } else {
-            const data = await response.json();
-            showToast(data.detail || "Ошибка при удалении проекта", "error");
-        }
+        await apiClient.delete(`/projects/${projectId}/`);
+        showToast("Проект успешно удален", "success");
+        loadTeamProjects(teamId);
     } catch (err) {
-        showToast("Ошибка связи с сервером", "error");
+        showToast(getApiErrorMessage(err, "Ошибка при удалении проекта"), "error");
     }
 }
 
@@ -548,7 +474,7 @@ function openCreateProjectModal(teamId) {
         if (!name) return showToast("Укажите название проекта", "error");
 
         // Используем универсальный обработчик (модифицированный под обновление проектов)
-        await handleProjectCreate(`${API_URL}/teams/${teamId}/projects/`, { name, description }, teamId);
+        await handleProjectCreate(`/teams/${teamId}/projects/`, { name, description }, teamId);
     };
 }
 
@@ -557,26 +483,15 @@ function openCreateProjectModal(teamId) {
  * так как после него нужно обновить именно список проектов, а не команд
  */
 async function handleProjectCreate(url, data, teamId) {
-    const headers = getAuthHeaders();
-    if (!headers) return;
+    if (!ensureSession()) return;
 
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(data)
-        });
-
-        if (response.ok) {
-            showToast("Проект успешно создан!", "success");
-            closeTeamSettings(); // Закрываем модалку и скрываем описание
-            loadTeamProjects(teamId); // Перерисовываем вкладку проектов
-        } else {
-            const errData = await response.json();
-            showToast(errData.detail || "Ошибка при создании", "error");
-        }
+        await apiClient.post(url, data);
+        showToast("Проект успешно создан!", "success");
+        closeTeamSettings();
+        loadTeamProjects(teamId);
     } catch (err) {
-        showToast("Сервер не отвечает", "error");
+        showToast(getApiErrorMessage(err, "Ошибка при создании"), "error");
     }
 }
 
@@ -657,24 +572,12 @@ function openEditProjectModal(teamId, projectId, currentName, currentDesc) {
         if (!name) return showToast("Название не может быть пустым", "error");
 
         try {
-            const response = await fetch(`${API_URL}/projects/${projectId}/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('access')}`
-                },
-                body: JSON.stringify({ name, description })
-            });
-
-            if (response.ok) {
-                showToast("Проект обновлен!", "success");
-                closeTeamSettings();
-                loadTeamProjects(teamId); // Перерисовываем список проектов
-            } else {
-                showToast("Ошибка при сохранении", "error");
-            }
+            await apiClient.patch(`/projects/${projectId}/`, { name, description });
+            showToast("Проект обновлен!", "success");
+            closeTeamSettings();
+            loadTeamProjects(teamId);
         } catch (err) {
-            showToast("Сервер не отвечает", "error");
+            showToast(getApiErrorMessage(err, "Ошибка при сохранении"), "error");
         }
     };
 }

@@ -3,7 +3,7 @@
 ## Быстрый запуск
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 После старта:
