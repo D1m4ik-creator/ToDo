@@ -47,8 +47,15 @@
                        class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                        placeholder="Например: Отдел маркетинга">
 
+                <div id="project-ai-wrapper" class="mt-4 hidden">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest">AI задачи (1-60)</label>
+                    <input id="project-ai-count-input" type="number" min="1" max="60" value="10"
+                           class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-sm font-semibold">
+                </div>
+
                 <div class="flex gap-3 mt-8">
                     <button onclick="closeTeamSettings()" class="flex-1 px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition">Отмена</button>
+                    <button id="modal-ai-action-btn" class="hidden flex-1 px-6 py-3 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition">Создать + AI</button>
                     <button id="modal-action-btn" class="flex-1 px-6 py-3 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition">Создать</button>
                 </div>
 

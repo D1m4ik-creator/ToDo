@@ -5,6 +5,41 @@ function ensureSession() {
     return false;
 }
 
+const DEFAULT_AI_TASKS_COUNT = 10;
+
+function getAiTasksCountValue() {
+    const input = document.getElementById("project-ai-count-input");
+    if (!input) return DEFAULT_AI_TASKS_COUNT;
+
+    const parsed = Number.parseInt(input.value, 10);
+    if (!Number.isFinite(parsed)) return DEFAULT_AI_TASKS_COUNT;
+    return Math.max(1, Math.min(parsed, 60));
+}
+
+function toggleProjectAiControls(show) {
+    const wrapper = document.getElementById("project-ai-wrapper");
+    const button = document.getElementById("modal-ai-action-btn");
+
+    if (wrapper) wrapper.classList.toggle("hidden", !show);
+    if (button) button.classList.toggle("hidden", !show);
+}
+
+async function triggerProjectAiGeneration(projectId, teamId = null, tasksCount = DEFAULT_AI_TASKS_COUNT) {
+    if (!ensureSession()) return;
+
+    try {
+        const result = await apiClient.post(`/projects/${projectId}/generate-ai-tasks/`, {
+            tasks_count: tasksCount,
+        });
+        showToast(result.detail || "AI генерация задач запущена", "success");
+        if (teamId) {
+            setTimeout(() => loadTeamProjects(teamId), 1200);
+        }
+    } catch (err) {
+        showToast(getApiErrorMessage(err, "Не удалось запустить AI генерацию"), "error");
+    }
+}
+
 /**
  * Рендеринг основной вкладки команд
  */
@@ -296,6 +331,7 @@ function openTeamModal(teamId = null, currentName = "") {
     modal.classList.remove('hidden');
     input.value = currentName;
     input.focus();
+    toggleProjectAiControls(false);
 
     if (teamId) {
         title.innerText = "Настройки команды";
@@ -387,6 +423,12 @@ function renderProjectsInside(teamId, projects) {
     const projectsHtml = projects.map(p => `
         <div class="group p-6 rounded-3xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-50/50 transition-all relative overflow-hidden flex flex-col justify-between min-h-[160px]">
             <div class="absolute top-4 right-4 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button onclick="triggerProjectAiGeneration(${p.id}, ${teamId}, ${DEFAULT_AI_TASKS_COUNT})"
+                        class="p-2 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl" title="Сгенерировать AI задачи">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </button>
                 <button onclick="openEditProjectModal(${teamId}, ${p.id}, '${p.name.replace(/'/g, "\\'")}', '${(p.description || '').replace(/'/g, "\\'").replace(/\n/g, "\\n")}')"
                         class="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl" title="Редактировать">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -413,10 +455,16 @@ function renderProjectsInside(teamId, projects) {
                 <p class="text-xs text-slate-400 line-clamp-2 mb-4 font-medium">${p.description || 'Без описания'}</p>
             </div>
 
-            <button onclick="openProject(${p.id})"
-                    class="relative w-full py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
-                Открыть доску
-            </button>
+            <div class="grid grid-cols-2 gap-2 relative">
+                <button onclick="openProject(${p.id})"
+                        class="w-full py-3 bg-slate-50 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
+                    Открыть
+                </button>
+                <button onclick="triggerProjectAiGeneration(${p.id}, ${teamId}, ${DEFAULT_AI_TASKS_COUNT})"
+                        class="w-full py-3 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all">
+                    AI задачи
+                </button>
+            </div>
         </div>
     `).join('');
 
@@ -436,6 +484,7 @@ function openCreateProjectModal(teamId) {
     const title = document.getElementById('modal-title');
     const inputName = document.getElementById('team-modal-input'); // Поле названия (существующее)
     const actionBtn = document.getElementById('modal-action-btn');
+    const aiActionBtn = document.getElementById("modal-ai-action-btn");
     const dangerZone = document.getElementById('modal-danger-zone');
 
     if (!modal || !inputName) return;
@@ -462,9 +511,15 @@ function openCreateProjectModal(teamId) {
         descInput = document.getElementById('project-desc-modal-input');
     } else {
         // Если уже есть, просто показываем его
-        document.getElementById('project-desc-wrapper').classList.remove('hidden');
+        const existingDescWrapper = document.getElementById('project-desc-wrapper');
+        existingDescWrapper?.classList.remove('hidden');
         descInput.value = "";
     }
+
+    toggleProjectAiControls(true);
+    const aiCountInput = document.getElementById('project-ai-count-input');
+    if (aiCountInput) aiCountInput.value = String(DEFAULT_AI_TASKS_COUNT);
+    if (aiActionBtn) aiActionBtn.innerText = "Создать + AI";
 
     // 3. Переопределяем логику кнопки действия
     actionBtn.onclick = async () => {
@@ -473,9 +528,26 @@ function openCreateProjectModal(teamId) {
 
         if (!name) return showToast("Укажите название проекта", "error");
 
-        // Используем универсальный обработчик (модифицированный под обновление проектов)
         await handleProjectCreate(`/teams/${teamId}/projects/`, { name, description }, teamId);
     };
+
+    if (aiActionBtn) {
+        aiActionBtn.onclick = async () => {
+            const name = inputName.value.trim();
+            const description = descInput.value.trim();
+
+            if (!name) return showToast("Укажите название проекта", "error");
+
+            const project = await handleProjectCreate(
+                `/teams/${teamId}/projects/`,
+                { name, description },
+                teamId
+            );
+            if (!project?.id) return;
+
+            await triggerProjectAiGeneration(project.id, teamId, getAiTasksCountValue());
+        };
+    }
 }
 
 /**
@@ -486,12 +558,14 @@ async function handleProjectCreate(url, data, teamId) {
     if (!ensureSession()) return;
 
     try {
-        await apiClient.post(url, data);
+        const project = await apiClient.post(url, data);
         showToast("Проект успешно создан!", "success");
         closeTeamSettings();
         loadTeamProjects(teamId);
+        return project;
     } catch (err) {
         showToast(getApiErrorMessage(err, "Ошибка при создании"), "error");
+        return null;
     }
 }
 
@@ -505,6 +579,7 @@ function closeTeamSettings() {
     // Скрываем поле описания, чтобы оно не вылезло при создании команды
     const descWrapper = document.getElementById('project-desc-wrapper');
     if (descWrapper) descWrapper.classList.add('hidden');
+    toggleProjectAiControls(false);
 }
 
 function switchTeamTab(teamId, tab, teamName) {
@@ -548,6 +623,7 @@ function openEditProjectModal(teamId, projectId, currentName, currentDesc) {
     inputName.value = currentName;
     actionBtn.innerText = "Сохранить изменения";
     if (dangerZone) dangerZone.classList.add('hidden');
+    toggleProjectAiControls(false);
 
     // Проверяем/создаем поле описания
     let descInput = document.getElementById('project-desc-modal-input');

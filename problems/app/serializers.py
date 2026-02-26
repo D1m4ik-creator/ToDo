@@ -192,3 +192,12 @@ class NotificationReadResponseSerializer(serializers.Serializer):
 
 class TeamInviteActionResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+
+
+class ProjectAIGenerateRequestSerializer(serializers.Serializer):
+    tasks_count = serializers.IntegerField(required=False, min_value=1, max_value=60)
+
+
+class ProjectAIGenerateResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    celery_task_id = serializers.CharField()

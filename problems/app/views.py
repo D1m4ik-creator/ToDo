@@ -322,6 +322,33 @@ class ProjectsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Projects.objects.filter(team__members=self.request.user).distinct()
 
+    @extend_schema(
+        summary="Запустить AI-генерацию задач проекта (OpenRouter)",
+        request=ProjectAIGenerateRequestSerializer,
+        responses={
+            202: ProjectAIGenerateResponseSerializer,
+            400: ValidationErrorSerializer,
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="generate-ai-tasks")
+    def generate_ai_tasks(self, request, pk=None):
+        serializer = ProjectAIGenerateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        project = self.get_object()
+        tasks_count = serializer.validated_data.get("tasks_count")
+
+        from .tasks import generate_project_ai_tasks
+
+        async_result = generate_project_ai_tasks(project.id, tasks_count=tasks_count)
+        return Response(
+            {
+                "detail": "Генерация задач запущена",
+                "celery_task_id": async_result.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
 
 class NotificationsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]

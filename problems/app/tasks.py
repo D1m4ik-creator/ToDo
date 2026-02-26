@@ -1,6 +1,7 @@
 from celery import shared_task
 from app.services.events import NotificationService
-from app.models import Team
+from app.models import Team, Projects
+from app.services.project_service import generate_ai_tasks_for_project
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -21,3 +22,18 @@ def send_team_invite_notification(self, invited_user_id, team_id, inviter_id):
         team=team,
         inviter=inviter
     )
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=5,
+    retry_kwargs={"max_retries": 2}
+)
+def generate_project_ai_tasks(self, project_id, tasks_count=None):
+    project = Projects.objects.get(id=project_id)
+    created_tasks = generate_ai_tasks_for_project(project, tasks_count=tasks_count)
+    return {
+        "project_id": project_id,
+        "created_count": len(created_tasks),
+    }

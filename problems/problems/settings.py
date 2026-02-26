@@ -69,7 +69,7 @@ DATABASES = {
         "NAME": "tododb",
         "USER": "postgres",
         "PASSWORD": "L7062006v.",
-        "HOST": "db",
+        "HOST": "localhost",
         "PORT": "5432",
         'OPTIONS': {
             'client_encoding': 'UTF8',
@@ -133,15 +133,40 @@ SPECTACULAR_SETTINGS = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",  # номер базы Redis (1)
+        "LOCATION": "redis://127.0.0.1:6379/1",  # номер базы Redis (1)
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     }
 }
 
+# OpenRouter AI settings
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.getenv(
+    "OPENROUTER_BASE_URL",
+    "https://openrouter.ai/api/v1/chat/completions",
+)
+OPENROUTER_MODEL_CANDIDATES = [
+    model.strip()
+    for model in os.getenv(
+        "OPENROUTER_MODEL_CANDIDATES",
+        "deepseek/deepseek-r1-0528",
+    ).split(",")
+    if model.strip()
+]
+OPENROUTER_DEFAULT_MODEL = (
+    OPENROUTER_MODEL_CANDIDATES[0]
+    if OPENROUTER_MODEL_CANDIDATES
+    else "deepseek/deepseek-r1"
+)
+OPENROUTER_MAX_OUTPUT_TOKENS = int(os.getenv("OPENROUTER_MAX_OUTPUT_TOKENS", "4096"))
+OPENROUTER_REQUEST_TIMEOUT = int(os.getenv("OPENROUTER_REQUEST_TIMEOUT", "30"))
+OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "http://localhost:5000")
+OPENROUTER_X_TITLE = os.getenv("OPENROUTER_X_TITLE", "ToDo")
+AI_DEFAULT_TASKS_COUNT = int(os.getenv("AI_DEFAULT_TASKS_COUNT", "10"))
 
-CELERY_BROKER_URL = "redis://redis:6379/0"
+
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -156,7 +181,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis", 6379)],
+            "hosts": [("127.0.0.1", 6379)],
         },
     },
 }
