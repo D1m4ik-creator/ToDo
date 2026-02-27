@@ -344,7 +344,7 @@ class ProjectsViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "detail": "Генерация задач запущена",
-                "celery_task_id": async_result.id,
+                "celery_task_id": async_result,
             },
             status=status.HTTP_202_ACCEPTED,
         )

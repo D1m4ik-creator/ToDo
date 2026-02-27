@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 import os
 from dotenv import load_dotenv
 
@@ -150,14 +150,14 @@ OPENROUTER_MODEL_CANDIDATES = [
     model.strip()
     for model in os.getenv(
         "OPENROUTER_MODEL_CANDIDATES",
-        "deepseek/deepseek-r1-0528",
+        "arcee-ai/trinity-large-preview:free,stepfun/step-3.5-flash:free,nvidia/nemotron-3-nano-30b-a3b:free,meta-llama/llama-3.3-70b-instruct:free,openrouter/free",
     ).split(",")
     if model.strip()
 ]
 OPENROUTER_DEFAULT_MODEL = (
     OPENROUTER_MODEL_CANDIDATES[0]
     if OPENROUTER_MODEL_CANDIDATES
-    else "deepseek/deepseek-r1"
+    else "arcee-ai/trinity-large-preview:free"
 )
 OPENROUTER_MAX_OUTPUT_TOKENS = int(os.getenv("OPENROUTER_MAX_OUTPUT_TOKENS", "4096"))
 OPENROUTER_REQUEST_TIMEOUT = int(os.getenv("OPENROUTER_REQUEST_TIMEOUT", "30"))
@@ -185,3 +185,4 @@ CHANNEL_LAYERS = {
         },
     },
 }
+

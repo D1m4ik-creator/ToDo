@@ -17,7 +17,7 @@ class OpenRouterTaskGenerator:
             "Ты опытный project manager. "
             "Сгенерируй практичные задачи для проекта. "
             "Отвечай ТОЛЬКО валидным JSON без markdown. "
-            'Формат: {"tasks":[{"title":"...","description":"...","priority":"low|medium|high|urgently"}]}.'
+            '{"tasks":[{"title":"...","description":"...","priority":"low|medium|high|urgently"}]}.'
         )
         user_prompt = (
             f"Название проекта: {project_name}\n"
@@ -93,24 +93,31 @@ class OpenRouterTaskGenerator:
 
         return normalized
 
+    @staticmethod
+    def _get_model_candidates(model: str | None) -> list[str]:
+        configured = [
+            candidate
+            for candidate in getattr(settings, "OPENROUTER_MODEL_CANDIDATES", [])
+            if isinstance(candidate, str) and candidate.strip()
+        ]
+
+        if model and model.strip():
+            selected = model.strip()
+            return [selected] + [candidate for candidate in configured if candidate != selected]
+
+        if configured:
+            return configured
+
+        default_model = str(getattr(settings, "OPENROUTER_DEFAULT_MODEL", "")).strip()
+        return [default_model] if default_model else []
+
     @classmethod
-    def generate_tasks_from_project(
+    def _request_tasks_for_model(
         cls,
         *,
-        project_name: str,
-        project_description: str,
-        tasks_count: int | None = None,
-        model: str | None = None,
+        model: str,
+        messages: list[dict[str, str]],
     ) -> list[dict[str, str]]:
-        if not settings.OPENROUTER_API_KEY:
-            raise OpenRouterServiceError("OPENROUTER_API_KEY не задан.")
-
-        requested_count = tasks_count or settings.AI_DEFAULT_TASKS_COUNT
-        requested_count = max(1, min(requested_count, 60))
-
-        selected_model = model or settings.OPENROUTER_DEFAULT_MODEL
-        messages = cls._build_prompt(project_name, project_description, requested_count)
-
         headers = {
             "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
             "Content-Type": "application/json",
@@ -118,7 +125,7 @@ class OpenRouterTaskGenerator:
             "X-Title": settings.OPENROUTER_X_TITLE,
         }
         payload = {
-            "model": selected_model,
+            "model": model,
             "messages": messages,
             "temperature": 0.3,
             "max_tokens": settings.OPENROUTER_MAX_OUTPUT_TOKENS,
@@ -141,18 +148,53 @@ class OpenRouterTaskGenerator:
                 f"OpenRouter вернул ошибку {response.status_code}: {detail}"
             )
 
-        data = response.json()
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-        if not content:
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise OpenRouterServiceError("OpenRouter вернул невалидный JSON-ответ.") from exc
+
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not isinstance(content, str):
+            content = str(content)
+
+        if not content.strip():
             raise OpenRouterServiceError("Пустой ответ от модели.")
 
         parsed = cls._extract_json(content)
         tasks = parsed.get("tasks")
         if not isinstance(tasks, list):
-            raise OpenRouterServiceError("Ожидался JSON формата {'tasks': [...]}.")
+            raise OpenRouterServiceError("Ожидался JSON формата {'tasks': [...] }.")
 
         return cls._normalize_tasks(tasks)
+
+    @classmethod
+    def generate_tasks_from_project(
+        cls,
+        *,
+        project_name: str,
+        project_description: str,
+        tasks_count: int | None = None,
+        model: str | None = None,
+    ) -> list[dict[str, str]]:
+        if not settings.OPENROUTER_API_KEY:
+            raise OpenRouterServiceError("OPENROUTER_API_KEY не задан.")
+
+        requested_count = tasks_count or settings.AI_DEFAULT_TASKS_COUNT
+        requested_count = max(1, min(requested_count, 60))
+
+        messages = cls._build_prompt(project_name, project_description, requested_count)
+        model_candidates = cls._get_model_candidates(model)
+        if not model_candidates:
+            raise OpenRouterServiceError("Не задан список моделей OpenRouter.")
+
+        errors: list[str] = []
+        for candidate in model_candidates:
+            try:
+                return cls._request_tasks_for_model(model=candidate, messages=messages)
+            except OpenRouterServiceError as exc:
+                errors.append(f"{candidate}: {exc}")
+
+        details = " | ".join(errors)
+        raise OpenRouterServiceError(
+            f"Не удалось сгенерировать задачи ни одной моделью. {details}"
+        )
